@@ -454,3 +454,6 @@ if __name__ == "__main__":
     # part 1
     # ********************************************************************************
     # Total number of points: 398
+
+    # part2
+    # Maximum manhattan distance is 10965
