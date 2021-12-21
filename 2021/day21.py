@@ -1,3 +1,4 @@
+from collections import namedtuple, Counter
 from typing import Sequence
 
 class Die:
@@ -225,49 +226,171 @@ def play_games_to_length(players, length):
     # now we've played all the games to length
     return longer_games_exist
 
+
+
+####################################################################################################
+
+
+GameConfig = namedtuple("GameConfig",["player_count","win_score", "board_length", "dice_rolls_per_turn", "dice_sides"])
+
+class GameNode:
+
+    COUNTER = 0
+
+    @classmethod
+    def get_counter(cls):
+        cls.COUNTER += 1
+        return cls.COUNTER
+
+    @classmethod
+    def reset_counter(cls):
+        cls.COUNTER = 0
+
+    def __init__(self, game_config, parent_sequence, node_cardinality, player_positions, player_scores, next_player):
+        self.game_config = game_config
+        self.parent_sequence = parent_sequence
+        self.node_cardinality = node_cardinality # the number of times this games state can occur
+        self.player_positions = player_positions
+        self.player_scores = player_scores
+        self.next_player = next_player
+        self.index = self.get_counter()
+
+    def get_winner(self):
+        for i in range(len(self.player_scores)):
+            if self.player_scores[i] >= self.game_config.win_score:
+                return i
+        return None
+
+    def iterate_game(self, next_roll, num_rolls):
+        #num_rolls is the number of ways we can get the rolls
+        assert self.get_winner() is None
+
+        # print(" "*self.parent_sequence, next_roll)
+
+        new_next_player = (self.next_player + 1) % self.game_config.player_count
+        new_player_positions = list(self.player_positions)
+        new_player_scores = list(self.player_scores)
+        new_sequence = self.parent_sequence + [next_roll]
+        new_cardinality = self.node_cardinality * num_rolls
+
+        #use self.next_player for this iteration, but increment for the child node
+        new_player_positions[self.next_player] = (new_player_positions[self.next_player] + next_roll) % self.game_config.board_length
+        new_player_scores[self.next_player] += new_player_positions[self.next_player]+1 # +1 because positions are zero indexed
+
+        return GameNode(self.game_config, 
+            new_sequence, new_cardinality,
+            new_player_positions, new_player_scores, new_next_player)
+
+    def __str__(self):
+        return f"index={self.index}, cardinality={self.node_cardinality}, sequence={self.parent_sequence}, scores={self.player_scores}"
+
+    def __repr__(self):
+        return self.__str__()
+
+class GameIterator:
+    """walk a tree of the die states accumulating wins and losses for each player as we go
+    each tree state is the state of the game through the sequence of moves for all its parents
+    we stop walking the tree when we reach a win condition
+    when we've completed all the iteratins for a branch, we delete it to avoid using up all our memory.
+    """
+
+    def __init__(self, game_config, initial_positions):
+        self.game_config = game_config
+        self.initial_positions = initial_positions
+
+        self.dice_counts = self.permute_dice(self.game_config.dice_rolls_per_turn, self.game_config.dice_sides)
+
+        num_players = len(initial_positions)
+
+        self.root = GameNode(self.game_config, [], 1, initial_positions, [0]*num_players, 0)
+        self.win_counts = [0]*num_players
+
+    @staticmethod
+    def permute_dice(rolls_per_turn, dice_sides):
+
+        counts = Counter()
+
+        def add_roll(sequence_to_extend):
+            sequences = []
+            for side in range(dice_sides):
+                new_sequence = sequence_to_extend + [side+1]
+                if len(new_sequence) == rolls_per_turn:
+                    sequences.append(new_sequence)
+                    # print(new_sequence)
+                else:
+                    #keep going deeper
+                    sequences.extend(add_roll(new_sequence))
+            return sequences
+
+        all_sequences = add_roll([])
+
+        for sequence in all_sequences:
+            counts[sum(sequence)] = counts[sum(sequence)] + 1
+
+        print(counts)
+
+        assert sum([v for v in counts.values()]) == dice_sides**rolls_per_turn
+
+        return counts
+
+
+    def do_iteration(self):
+        """top level start for tree iteration"""
+        self._do_iteration_recursive(self.root)
+
+        
+    def _do_iteration_recursive(self, current_node):
+
+        if current_node.index % 1000000 == 0:
+            print(f"[{self.win_counts[0]:15d}] ,{self.win_counts[1]:15d}]", current_node)
+
+        #one child for each dice roll
+        for dice_roll, num_rolls in self.dice_counts.items():
+            child_node = current_node.iterate_game(dice_roll, num_rolls)
+
+            winner = child_node.get_winner()
+            if winner is None:
+                #recurse if no winner
+                self._do_iteration_recursive(child_node)
+            else:
+                # there is a winner -- halting condition for the depth of the tree walk
+                # record the score num_rolls time, because there are that many dice rolls to 
+                # get to this outcome
+                self.win_counts[winner] += child_node.node_cardinality
+
+            
+
+
 def play_p2(positions):
     start_positions = load(positions)
-    
-    players = [Player(p) for p in start_positions ]
 
-    game_length = 5 #can't win a game in fewer than 5 moves
-    more_games_exist = True
+    config = GameConfig(
+        player_count=2,
+        win_score=21,
+        board_length=10,
+        dice_rolls_per_turn=3,
+        dice_sides=3)    
 
-    while more_games_exist:
+    game = GameIterator(config, start_positions)
+    game.do_iteration()
 
-        more_games_exist = play_games_to_length(players, game_length)
-        game_length += 1
-        
-    #print win counts
-    for p in players:
-        print(p)
-
-
-
-    
+    print("**************************************************")
+    print("Game win counts:", game.win_counts)
 
 
 
-
-
-    print("Winner", game.winner)
-    print("Losers", game.losers)
-    print("Die: ", die)
-
-    assert len(game.losers) == 1
-    print("Loser score * dice rolls = ", game.losers[0].score * die.roll_count )
 
 
 if __name__ == "__main__":
     #test case
-    start="""Player 1 starting position: 4
-Player 2 starting position: 8
-"""
+#     start="""Player 1 starting position: 4
+# Player 2 starting position: 8
+# """
 
     #input case
-#     start="""Player 1 starting position: 6
-# Player 2 starting position: 3
-# """
+    start="""Player 1 starting position: 6
+Player 2 starting position: 3
+"""
     play_p1(start)
 
     # part 1
@@ -277,3 +400,8 @@ Player 2 starting position: 8
     # Loser score * dice rolls =  752745
 
     play_p2(start)
+
+    #     **************************************************
+    # Game win counts: [309196008717909, 227643103580178]
+
+

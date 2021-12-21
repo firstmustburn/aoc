@@ -2,6 +2,115 @@ from day21 import *
 import pytest
 
 
+def test_game_node():
+
+    GameNode.reset_counter()
+
+    config = GameConfig(
+        player_count=2,
+        win_score=21,
+        board_length=10,
+        dice_rolls_per_turn=3,
+        dice_sides=3)
+
+    dice_counts = GameIterator.permute_dice(config.dice_rolls_per_turn, config.dice_sides)
+    
+    
+    n = GameNode(config, [], 1, [4,8],[0,0], 0)
+    assert n.index == 1
+    assert n.parent_sequence == []
+    assert n.node_cardinality == 1
+    assert n.player_positions == [4,8]
+    assert n.player_scores == [0,0]
+    assert n.next_player == 0
+    assert n.get_winner() == None
+
+    n = n.iterate_game(3, dice_counts[3])
+    assert n.index == 2
+    assert n.parent_sequence == [3]
+    assert n.node_cardinality == 1*dice_counts[3]
+    assert n.player_positions == [7,8]
+    assert n.player_scores == [8,0] #+ pos+1
+    assert n.next_player == 1
+    assert n.get_winner() == None
+
+    n = n.iterate_game(7, dice_counts[7])
+    assert n.index == 3
+    assert n.parent_sequence == [3,7]
+    assert n.node_cardinality == 1*dice_counts[3]*dice_counts[7]
+    assert n.player_positions == [7,5]
+    assert n.player_scores == [8,6] #+ pos+1
+    assert n.next_player == 0
+    assert n.get_winner() == None
+
+    n = n.iterate_game(5, dice_counts[5])
+    assert n.index == 4
+    assert n.parent_sequence == [3,7,5]
+    assert n.node_cardinality == 1*dice_counts[3]*dice_counts[7]*dice_counts[5]
+    assert n.player_positions == [2,5]
+    assert n.player_scores == [11,6] #+ pos+1
+    assert n.next_player == 1
+    assert n.get_winner() == None
+
+    n = n.iterate_game(9, dice_counts[9])
+    assert n.index == 5
+    assert n.parent_sequence == [3,7,5,9]
+    assert n.node_cardinality == 1*dice_counts[3]*dice_counts[7]*dice_counts[5]*dice_counts[9]
+    assert n.player_positions == [2,4]
+    assert n.player_scores == [11,11] #+ pos+1
+    assert n.next_player == 0
+    assert n.get_winner() == None
+
+    n = n.iterate_game(7, dice_counts[7])
+    assert n.index == 6
+    assert n.parent_sequence == [3,7,5,9,7]
+    assert n.node_cardinality == 1*dice_counts[3]*dice_counts[7]*dice_counts[5]*dice_counts[9]*dice_counts[7]
+    assert n.player_positions == [9,4]
+    assert n.player_scores == [21,11] #+ pos+1
+    assert n.next_player == 1
+    assert n.get_winner() == 0
+
+    #can't iterate past the win
+    with pytest.raises(AssertionError):
+        n.iterate_game(5, dice_counts[5])
+
+
+
+
+# def test_day21_2():
+
+#     start_positions = [4,8]
+
+#     config = GameConfig(
+#         player_count=2,
+#         win_score=11,
+#         board_length=10,
+#         dice_rolls_per_turn=2,
+#         dice_sides=2)    
+
+#     game = GameIterator(config, start_positions)
+#     game.do_iteration()
+
+#     print("**************************************************")
+#     print("Game win counts:", game.win_counts)
+
+
+
+
+
+def test_permute_dice():
+
+    counts = GameIterator.permute_dice(3,3)
+    assert sum([v for v in counts.values()] )== 27
+    assert counts[3] == 1
+    assert counts[4] == 3
+    assert counts[5] == 6
+    assert counts[6] == 7
+    assert counts[7] == 6
+    assert counts[8] == 3
+    assert counts[9] == 1
+
+
 def  test_die_generator():
 
     dg = DiracDieGenerator(3, 4)
