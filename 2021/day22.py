@@ -3,6 +3,12 @@ from bitarray import bitarray
 def pair_range(pair):
     return range(pair[0], pair[1]+1)
 
+
+def bounded_pair_range(pair, bound):
+    lower = max(pair[0], bound[0])
+    upper = min(pair[1], bound[1])
+    return range(lower, upper+1)
+
 class Instruction:
 
     X_INDEX=0
@@ -52,8 +58,13 @@ class Instruction:
     def __str__(self):
         return f"Instruction(cmd={self.command}, x={self.xrange}, y={self.yrange}, x={self.zrange})"
 
+    def __repr__(self):
+        return self.__str__()
+
 
 class InstructionSet:
+
+    MAX_BOUND=(-50,50)
 
     @classmethod
     def parse(self, lines):
@@ -72,6 +83,11 @@ class InstructionSet:
             i_val = inst.get_range(range_ind)
             min_val = min(min_val, i_val[0])
             max_val = max(max_val, i_val[1])
+
+        if min_val < self.MAX_BOUND[0]:
+            min_val = self.MAX_BOUND[0]
+        if max_val > self.MAX_BOUND[1]:
+            max_val = self.MAX_BOUND[1]
 
         return min_val, max_val        
 
@@ -111,9 +127,9 @@ class InstructionSet:
 
         for instruction in self.instructions:
             print(instruction)
-            for xi in pair_range(instruction.xrange):
-                for yi in pair_range(instruction.yrange):
-                    for zi in pair_range(instruction.zrange):
+            for xi in bounded_pair_range(instruction.xrange, x_bound):
+                for yi in bounded_pair_range(instruction.yrange, y_bound):
+                    for zi in bounded_pair_range(instruction.zrange, z_bound):
                         if instruction.command == Instruction.ON_STR:
                             set_state(xi,yi,zi,1)
                         elif instruction.command == Instruction.OFF_STR:
@@ -142,8 +158,14 @@ class InstructionSet:
 
 
 if __name__ == "__main__":
-    pass
+    
+    with open('day22.txt') as infile:
+        data = infile.read()
 
+    iset = InstructionSet.parse(data.strip().split('\n'))
+    print("Count in init region:", iset.count_number_on(-50,50,-50,50,-50,50))
+
+    #  Count in init region: 658691
 
 
 
