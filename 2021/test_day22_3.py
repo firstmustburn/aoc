@@ -1,4 +1,4 @@
-from day22_2 import *
+from day22_3 import *
 
 test_input_3="""on x=-5..47,y=-31..22,z=-19..33
 on x=-44..5,y=-27..21,z=-14..35
@@ -62,13 +62,13 @@ on x=-53470..21291,y=-120233..-33476,z=-44150..38147
 off x=-93533..-4276,y=-16170..68771,z=-104985..-24507
 """
 
-def test_day22_2_end_to_end():
+def test_day22_3_end_to_end():
     iset = InstructionSet.parse(test_input_3.strip().split('\n'))
     iset.process_regions()
     print("Count in init region:", iset.count_on_squares())
     assert iset.count_on_squares() == 2758514936282235
 
-def test_day22_2_simple_1():
+def test_day22_3_simple_1():
     test_input="""on x=-10..10,y=-10..10,z=-10..10
 on x=5..25,y=5..25,z=5..25
 """
@@ -78,7 +78,7 @@ on x=5..25,y=5..25,z=5..25
     print("Count:", square_count)
     assert square_count == 21*21*21 + 21*21*21 - 6*6*6
 
-def test_day22_2_simple_2():
+def test_day22_3_simple_2():
     test_input="""on x=-10..10,y=-10..10,z=-10..10
 off x=-5..5,y=-5..5,z=-5..5
 """
@@ -88,7 +88,7 @@ off x=-5..5,y=-5..5,z=-5..5
     print("Count:", square_count)
     assert square_count == 21*21*21 - 11*11*11
 
-def test_day22_2_simple_3():
+def test_day22_3_simple_3():
     test_input="""on x=-10..10,y=-10..10,z=-10..10
 off x=5..15,y=-5..5,z=-5..5
 """
@@ -98,7 +98,7 @@ off x=5..15,y=-5..5,z=-5..5
     print("Count:", square_count)
     assert square_count == 21*21*21 - 6*11*11
 
-def test_day22_2_simple_4():
+def test_day22_3_simple_4():
     test_input="""on x=-10..10,y=-10..10,z=-10..10
 on x=5..15,y=-5..5,z=-5..5
 """
@@ -108,7 +108,7 @@ on x=5..15,y=-5..5,z=-5..5
     print("Count:", square_count)
     assert square_count == 21*21*21 + 5*11*11
 
-def test_day22_2_simple_5():
+def test_day22_3_simple_5():
     test_input="""on x=-10..10,y=-10..10,z=-10..10
 on x=11..20,y=-10..10,z=-10..10
 """
@@ -118,7 +118,7 @@ on x=11..20,y=-10..10,z=-10..10
     print("Count:", square_count)
     assert square_count == 21*21*21 + 10*21*21
 
-def test_day22_2_simple_6():
+def test_day22_3_simple_6():
     test_input="""on x=-10..10,y=-10..10,z=-10..10
 on x=11..20,y=-10..10,z=-10..10
 off x=5..15,y=-5..5,z=-5..5
@@ -133,5 +133,5 @@ off x=5..15,y=-5..5,z=-5..5
 
 
 if __name__ == "__main__":
-    test_day22_2_simple_1()
+    test_day22_3_simple_1()
 

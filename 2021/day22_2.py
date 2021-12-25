@@ -1,3 +1,4 @@
+from collections import namedtuple
 
 # Strategy
 #  - need a way to do SET operations on the regions
@@ -28,8 +29,8 @@
 # to count the number of cubes on, just use HxLxW for all the regions in the final set 
 
 def debug(*args):
-    # pass
-    print(*args)
+    pass
+    # print(*args)
 
 def pair_range(pair):
     return range(pair[0], pair[1]+1)
@@ -49,7 +50,31 @@ ORIENTATION_STR = {
 }
 
 
+Edge = namedtuple("Edge",["hint","x","y","z"])
+
 class Region:
+
+    intersect_cache = {} #map of (left,right) and (right,left) tuples to boolean intersects results
+
+    @classmethod
+    def cache_intersects(cls, left, right):
+        try:
+            return cls.intersect_cache[(left,right)]
+        except KeyError:
+            return None
+
+    @classmethod
+    def add_cache_intersects(cls, left, right, result):
+        t1 = (left,right)
+        t2 = (right, left)
+        assert t1 not in cls.intersect_cache
+        assert t2 not in cls.intersect_cache
+        cls.intersect_cache[t1]=result
+        cls.intersect_cache[t2]=result
+    
+    @classmethod
+    def reset_cache_intersects(cls):
+        cls.intersect_cache.clear()
 
     def __init__(self, xrange, yrange, zrange, ancestors=None):
         self._xrange = xrange
@@ -59,6 +84,7 @@ class Region:
             ancestors = []
         self._ancestors = ancestors
         self._planes = None
+        self._edges = None
 
     def copy(self):
         return Region(
@@ -110,6 +136,27 @@ class Region:
 
     def zlen(self):
         return abs(self._zrange[1]-self._zrange[0])+1
+
+    def get_edges(self):
+        # return an edge for all the edges of the region
+        # edges are an axis hint, the range in the axis direction, and the other two coordinates
+        if self._edges is not None:
+            return self._edges
+        # make edges
+        self._edges = []
+        #x edges
+        for yi in self._yrange:
+            for zi in self._zrange:
+                self._edges.append(Edge(X_INDEX, self._xrange, yi, zi))
+        #y edges
+        for xi in self._xrange:
+            for zi in self._zrange:
+                self._edges.append(Edge(Y_INDEX, xi, self._yrange, zi))
+        #z edges
+        for xi in self._xrange:
+            for yi in self._yrange:
+                self._edges.append(Edge(Z_INDEX, xi, yi, self._zrange))
+        return self._edges
 
     def get_planes(self):
         if self._planes is not None:
@@ -183,8 +230,33 @@ class Region:
                         return True
         return False
 
+    def _other_edges_contained(self, other):
+        #return true IFF there are any edges from other that intersect with self
+        #this does not check for edges whose endpoints are contained, because that would be
+        #redundant with _other_points_contained
+        for edge_hint, edge_x, edge_y, edge_z in other.get_edges():
+            if edge_hint == X_INDEX:
+                if (edge_x[0] < self.xmin() and edge_x[1] > self.xmax()
+                    and edge_y >= self.ymin() and edge_y <= self.ymax()
+                    and edge_z >= self.zmin() and edge_z <= self.zmax()):
+                    return True
+            elif edge_hint == Y_INDEX:
+                if (edge_y[0] < self.ymin() and edge_y[1] > self.ymax()
+                    and edge_x >= self.xmin() and edge_x <= self.xmax()
+                    and edge_z >= self.zmin() and edge_z <= self.zmax()):
+                    return True
+            elif edge_hint == Z_INDEX:
+                if (edge_z[0] < self.zmin() and edge_z[1] > self.zmax()
+                    and edge_x >= self.xmin() and edge_x <= self.xmax()
+                    and edge_y >= self.ymin() and edge_y <= self.ymax()):
+                    return True
+            else:
+                raise ValueError("Unknown edge hint {edge_hint}")
+        return False
+
     def _region_region_intersects(self, other):
-        return self._other_points_contained(other) or other._other_points_contained(self)
+        return (self._other_points_contained(other) or other._other_points_contained(self) 
+            or self._other_edges_contained(other) or other._other_edges_contained(self))
 
     def _region_plane_intersects(self_region, other_plane):
         #definitely not an intersection if the regions don't overlap
@@ -216,17 +288,23 @@ class Region:
         return True
 
     def intersects(self, other):
+        cache_result = self.cache_intersects(self, other)
+        if cache_result is not None:
+            return cache_result
+
         if type(self) is Region and type(other) is Region:
             #intersect IFF any vertex of self is in other or any vertex of other is in self
-            return self._region_region_intersects(other)
+            retval = self._region_region_intersects(other)
         elif type(self) is Region and type(other) is Plane:
             #intersect IFF any vertex of self is in other or any vertex of other is in self
-            return self._region_plane_intersects(other)
+            retval = self._region_plane_intersects(other)
         elif type(self) is Plane and type(other) is Region:
             #intersect IFF any vertex of self is in other or any vertex of other is in self
-            return other._region_plane_intersects(self)
+            retval = other._region_plane_intersects(self)
         else:
             raise NotImplemented(f"intersects for {self}, {other}")
+        self.add_cache_intersects(self, other, retval)
+        return retval
 
     def divide_with_planes(self, planes):
         #start with a copy of ourself
@@ -287,8 +365,11 @@ class Region:
         # assert not intersect_fail
         return new_regions
 
+    def __hash__(self):
+        return hash(("region", self._xrange, self._yrange, self._zrange))
+
     def __eq__(self, other):
-        return self._xrange == other._xrange and self._yrange == other._yrange and self._zrange == other._zrange
+        return type(self) == type(other) and self._xrange == other._xrange and self._yrange == other._yrange and self._zrange == other._zrange
 
     def __str__(self):
         return f"R(x={self._xrange}, y={self._yrange}, z={self._zrange})"
@@ -314,69 +395,79 @@ class Plane(Region):
     def get_planes(self):
         return RuntimeError("not allowed for Plane")
 
+    def __hash__(self):
+        return hash(("plane", self._xrange, self._yrange, self._zrange))
+
     def __str__(self):
         return f"P(o={ORIENTATION_STR[self.orientation]}, x={self._xrange}, y={self._yrange}, z={self._zrange})"
 
 
 
-def alignment_round(left_list_in, right_list_in):
-    new_left = []
-    new_right = []
-    changed = False
-    for right_reg in right_list_in:
-        for left_reg in left_list_in:
-            if left_reg.intersects(right_reg) and left_reg != right_reg:
-                debug("Dividing intersecting regions:", left_reg, right_reg)
-                #divide the intersecting regions and insert them back into the master list replacing the original regions
-                new_left.extend(left_reg.divide_with_planes(right_reg.get_planes()))
-                new_right.extend(right_reg.divide_with_planes(left_reg.get_planes()))
-                changed = True
-            else:
-                debug("Keeping non-intersecting regions:", left_reg, right_reg)
-                #no intersection, so just add them on
-                new_left.append(left_reg)
-                new_right.append(right_reg)
-    return changed, new_right, new_left
+# def alignment_round(left_list_in, right_list_in):
+#     new_left = []
+#     new_right = []
+#     changed = False
+#     for right_reg in right_list_in:
+#         for left_reg in left_list_in:
+#             if left_reg.intersects(right_reg) and left_reg != right_reg:
+#                 debug("Dividing intersecting regions:", left_reg, right_reg)
+#                 #divide the intersecting regions and insert them back into the master list replacing the original regions
+#                 new_left.extend(left_reg.divide_with_planes(right_reg.get_planes()))
+#                 new_right.extend(right_reg.divide_with_planes(left_reg.get_planes()))
+#                 changed = True
+#             else:
+#                 debug("Keeping non-intersecting regions:", left_reg, right_reg)
+#                 #no intersection, so just add them on
+#                 new_left.append(left_reg)
+#                 new_right.append(right_reg)
+#     return changed, new_right, new_left
 
+
+# def align_region_lists(left_list, right_list):
+#     while 1:
+#         has_changed, left_list, right_list = alignment_round(left_list, right_list)
+#         debug("HasChanged: ", has_changed)
+#         debug("LeftList: ")        
+#         for l in left_list:
+#             debug("   ", l)
+#         debug("RightList: ")        
+#         for l in right_list:
+#             debug("   ", l)
+#         if not has_changed:
+#             break
+
+#     sanity_check = True
+#     for right_reg in right_list:
+#         for left_reg in left_list:
+#             if left_reg.intersects(right_reg):
+#                 debug("alignment failure:  still intersects ", right_reg, left_reg)
+#                 sanity_check = False
+#     assert sanity_check
+
+#     return left_list, right_list
 
 def align_region_lists(left_list, right_list):
-    while 1:
-        has_changed, left_list, right_list = alignment_round(left_list, right_list)
-        print(has_changed, left_list, right_list)
-        if not has_changed:
-            break
 
+    regions_changed = False
+    def do_one_alignment():
+        debug("Aligning ",len(left_list), "/", len(right_list))
+        for left_index, left_reg in enumerate(left_list):
+            for right_index, right_reg in enumerate(right_list):
+                if left_reg.intersects(right_reg) and left_reg != right_reg:
+                    debug("Dividing intersecting regions:", left_reg, right_reg)
+                    #divide the intersecting regions and insert them back into the master list replacing the original regions
+                    left_list[left_index:left_index+1] = left_reg.divide_with_planes(right_reg.get_planes())
+                    right_list[right_index:right_index+1] = right_reg.divide_with_planes(left_reg.get_planes())
+                    debug("       ",left_list)
+                    debug("       ",right_list)
+                    return True
+        #no alignments
+        return False
 
-    sanity_check = True
-    for right_reg in right_list:
-        for left_reg in left_list:
-            if left_reg.intersects(right_reg):
-                print("alignment failure:  still intersects ", right_reg, left_reg)
-                sanity_check = False
-    assert sanity_check
-
-    return left_list, right_list
-
-    # regions_changed = False
-    # def do_one_alignment():
-    #     print("Aligning ",len(left_list), "/", len(right_list))
-    #     for left_index, left_reg in enumerate(left_list):
-    #         for right_index, right_reg in enumerate(right_list):
-    #             if left_reg.intersects(right_reg) and left_reg != right_reg:
-    #                 debug("Dividing intersecting regions:", left_reg, right_reg)
-    #                 #divide the intersecting regions and insert them back into the master list replacing the original regions
-    #                 left_list[left_index:left_index+1] = left_reg.divide_with_planes(right_reg.get_planes())
-    #                 right_list[right_index:right_index+1] = right_reg.divide_with_planes(left_reg.get_planes())
-    #                 debug("       ",left_list)
-    #                 debug("       ",right_list)
-    #                 return True
-    #     #no alignments
-    #     return False
-
-    # while do_one_alignment():
-    #     pass
+    while do_one_alignment():
+        pass
                      
-    # return regions_changed
+    return regions_changed
 
 def region_list_union(left_list, right_list):
     if left_list == right_list:
@@ -386,10 +477,10 @@ def region_list_union(left_list, right_list):
     debug("   ",left_list)
     debug("   ",right_list)
 
-    print("aligning")
-    left_list, right_list = align_region_lists(left_list, right_list)
+    debug("aligning")
+    align_region_lists(left_list, right_list)
 
-    print("combining")
+    debug("combining")
     combined_regions = []
     for region in left_list + right_list:
         if region not in combined_regions:
@@ -409,10 +500,10 @@ def region_list_difference(left_list, right_list):
     debug("   ",left_list)
     debug("   ",right_list)
 
-    print("aligning")
-    left_list, right_list = align_region_lists(left_list, right_list)
+    debug("aligning")
+    align_region_lists(left_list, right_list)
 
-    print("differencing")
+    debug("differencing")
     remaining_regions = []
     for region in left_list:
         if region not in right_list:
