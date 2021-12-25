@@ -232,8 +232,7 @@ if __name__ == "__main__":
     print("Count in init region:", iset.count_on_squares())
 
     # part3
-    # Total on:  2758514936282235
-    # Count in init region: 2758514936282235
+    # Count in init region: 1228699515783640
 
 
 
