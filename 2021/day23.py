@@ -1,7 +1,7 @@
 from collections import namedtuple
 from functools import total_ordering
 from frozendict import frozendict as fd
-from os import pathsep
+from os import path, pathsep
 
 def debug(*args):
     pass
@@ -119,6 +119,19 @@ DESTINATION_FOR = fd({
 })
 DESTINATION_FOR_INDEXED = fd({ k: tuple([ POSITION_TO_INDEX[i] for i in v ]) for k,v in DESTINATION_FOR.items() })
 
+TYPE_OF_DESTINATION = fd({
+    AU_POS:A_TYPE,
+    AL_POS:A_TYPE,
+    BU_POS:B_TYPE,
+    BL_POS:B_TYPE,
+    CU_POS:C_TYPE,
+    CL_POS:C_TYPE,
+    DU_POS:D_TYPE,
+    DL_POS:D_TYPE,
+})
+TYPE_OF_DESTINATION_INDEXED = fd({ POSITION_TO_INDEX[k]:v for k,v in TYPE_OF_DESTINATION.items() })
+
+
 DESTINATION_POSITIONS = (
     AU_POS,
     AL_POS,
@@ -198,10 +211,10 @@ class State:
                 continue
             #in its destination
             if pos_index in DESTINATION_FOR_INDEXED[pos_value]:
-                if pos_index in LOWER_UPPER_MAP_INDEXED:
+                if cls.is_lower(pos_index):
                     #lower index means it's in its destination no matter what
                     continue
-                if pos_index in UPPER_LOWER_MAP_INDEXED \
+                elif cls.is_upper(pos_index) \
                     and position_list[OTHER_DESTINATION_MAP_INDEXED[pos_index]] == pos_value:
                     #  upper index is in its place if the lower index is
                     continue
@@ -227,16 +240,39 @@ class State:
         return not cls.is_destination(position_index)
 
     @classmethod
-    def can_traverse(cls, path_indices, original_type, target_index, position_list):
-        #can't go to destinations that are not ours
-        if cls.is_destination(target_index) and target_index not in DESTINATION_FOR_INDEXED[original_type]:
-            #except if we are trying to get out of someone else's destination
-            #we are already in a destination that is not ours
-            if original
-            TODO start here, figure out the logic to allow traversing the upper if we are the lower
+    def is_lower(cls, position_index):
+        return position_index in LOWER_UPPER_MAP_INDEXED
 
+    @classmethod
+    def is_upper(cls, position_index):
+        return position_index in UPPER_LOWER_MAP_INDEXED
+
+    @classmethod
+    def is_target_destination_traversible(cls, path_indices, original_type, target_index, position_list):
+        assert cls.is_destination(target_index)
+        type_of_destination = TYPE_OF_DESTINATION_INDEXED[target_index]
+        #same type is always traversible
+        if type_of_destination == original_type:
+            return True
+        #the rest is for different types
+        #the upper is traversible if we started out in the lower
+        #too long a path to traverse the upper
+        if len(path_indices) > 1: 
             return False
-        return True                
+        #check the exceptional condition 
+        path_start = path_indices[0]
+        if cls.is_destination(path_start) and TYPE_OF_DESTINATION_INDEXED[path_start] == type_of_destination and cls.is_lower(path_start):
+            return True
+        #otherwise not traversible
+        return False
+
+    @classmethod
+    def can_traverse(cls, path_indices, original_type, target_index, position_list):
+        if cls.is_destination(target_index):
+            return cls.is_target_destination_traversible(path_indices, original_type, target_index, position_list)
+        else:
+            #mids are always traversible
+            return True
 
     @classmethod
     def can_stop(cls, path_indices, original_type, target_index, position_list):
@@ -244,15 +280,16 @@ class State:
         if cls.is_not_destination(path_indices[0]) and cls.is_not_destination(target_index):
             return False
         #can't stop on an upper if the lower is empty
-        if target_index in UPPER_LOWER_MAP_INDEXED and position_list[OTHER_DESTINATION_MAP_INDEXED[target_index]] == None:
+        if cls.is_upper(target_index) and position_list[OTHER_DESTINATION_MAP_INDEXED[target_index]] == None:
             return False
         #can't stop on an upper destination that is ours if the lower is contains a different type
-        if target_index in UPPER_LOWER_MAP_INDEXED and position_list[OTHER_DESTINATION_MAP_INDEXED[target_index]] != original_type:
+        if cls.is_upper(target_index) and position_list[OTHER_DESTINATION_MAP_INDEXED[target_index]] != original_type:
             return False
         #can't stop in any destination that isn't ours
         if cls.is_destination(target_index) and \
-            target_index not in DESTINATION_FOR_INDEXED[original_type]:
+            TYPE_OF_DESTINATION_INDEXED[target_index] != original_type:
             return False
+        #otherwise can stop
         return True
         
     def iterate_next_moves(self):
@@ -377,13 +414,13 @@ class StateTree:
                 #skip because cost too high
                 continue
             new_state = state.apply_path(type_value, path, path_cost)
-            new_state.dump(depth)
+            # new_state.dump(depth)
 
             new_state_hash = hash(tuple(new_state.positions))
             try:
                 already_seen = self.visited_states[new_state_hash]
                 if already_seen.cost <= new_state.cost:
-                    print(" "*depth, "Halt at already seen state")
+                    # print(" "*depth, "Halt at already seen state")
                     continue
             except KeyError:
                 pass            
@@ -428,20 +465,25 @@ def load_initial_positions(data):
 
 
 if __name__ == "__main__":
-
+#test input
     data = """#############
 #...........#
 ###B#C#B#D###
   #A#D#C#A#
   #########
 """
+#debugging input
+#     data = """#############
+# #...........#
+# ###A#B#C#D###
+#   #D#B#C#A#
+#   #########
+# """
 
-    data = """#############
-#...........#
-###A#B#C#D###
-  #D#B#C#A#
-  #########
-"""
+    #real input
+    with open('day23.txt') as infile:
+        data = infile.read()
+
 
     initial_positions = load_initial_positions(data)
     state_tree = StateTree(initial_positions)
@@ -450,3 +492,11 @@ if __name__ == "__main__":
     state_tree.min_cost_state.dump()
     print('state tree min cost:', state_tree.min_cost)
 
+    # Min cost state
+
+    # #############
+    # #...........#
+    # ###A#B#C#D###
+    #   #A#B#C#D#
+    #   #########
+    # state tree min cost: 15412
