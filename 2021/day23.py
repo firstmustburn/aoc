@@ -472,17 +472,17 @@ if __name__ == "__main__":
   #A#D#C#A#
   #########
 """
-#debugging input
-#     data = """#############
-# #...........#
-# ###A#B#C#D###
-#   #D#B#C#A#
-#   #########
-# """
+# debugging input
+    data = """#############
+#...........#
+###A#B#C#D###
+  #D#B#C#A#
+  #########
+"""
 
-    #real input
-    with open('day23.txt') as infile:
-        data = infile.read()
+    # #real input
+    # with open('day23.txt') as infile:
+    #     data = infile.read()
 
 
     initial_positions = load_initial_positions(data)
@@ -490,6 +490,8 @@ if __name__ == "__main__":
     state_tree.iterate_states()
     print("Min cost state")
     state_tree.min_cost_state.dump()
+    for p in state_tree.min_cost_state.paths:
+        print("  ",p[0], [ INDEX_TO_POSITION[i] for i in p[1]])
     print('state tree min cost:', state_tree.min_cost)
 
     # Min cost state
