@@ -1,5 +1,6 @@
 from collections import namedtuple, defaultdict
-
+from pprint import pprint
+import time
 
 class ALUstate:
 
@@ -150,9 +151,6 @@ class ALU:
         # for v in alu_state.registers.values():
         #     assert isinstance(v, int)
 
-
-SearchState = namedtuple('SearchState',['win', 'zin', 'zout'])
-
 class AluTree:
 
     def create_instruction_sets(self, lines):
@@ -172,7 +170,7 @@ class AluTree:
         assert len(instruction_sets) == 14
         return instruction_sets
 
-    def __init__(self, lines):
+    def __init__(self, lines, initial_limits):
 
         self.alu = ALU()
         self.digits = [9,8,7,6,5,4,3,2,1]
@@ -181,90 +179,79 @@ class AluTree:
         self.number_processed = 0
 
         self.instruction_sets = self.create_instruction_sets(lines)
-
-    def search_with_hash_tables(self, z_limit):
-
-        htables = [] #list of hash tables in the same order as the instruction sets
-        for iset_index, iset in enumerate(self.instruction_sets):
-            print(f"Creating table for iset {iset_index}")
-            htable = defaultdict(list) #map of z output to lists of the two inputs that gave rise to it
-            success_count = 0
-            fail_count = 0
-            for win in self.digits:
-                for zin in range(0, z_limit+1): #go from 0 because negative z inputs are modded and fail 
-                    try:
-                        alu_state = ALUstate()
-                        alu_state.registers['z'] = zin
-                        self.alu.run_instruction_sequence(alu_state, iset, win)
-                        htable[alu_state.registers['z']].append((win,zin))
-                        success_count += 1
-                    except ALUerror as ex:
-                        # print(f"Operation failed for zin={zin}, win={win}: {ex}")
-                        fail_count += 1
-            #done with one table
-            htables.append(htable)
-            print(f"Finished table {iset_index}: success count={success_count}, fail_count={fail_count}")
-        print("non-default-dictionaries")    
-        htables = [ dict(ht) for ht in htables ]
-        print("Table creation completes")
-
-        # import sys
-        # sys.exit(-1)
-
-        global longest_so_far
-        longest_so_far = []
-
-        def recurse_htable(z_target, iset_index, inputs_so_far):
-            global longest_so_far
-
-            if len(inputs_so_far) > len(longest_so_far):
-                longest_so_far = inputs_so_far
-                print(f"longest sequence at {iset_index}:  {longest_so_far}")
-                print(f"    z_target={z_target}")
-                is_longest = True
-            else:
-                is_longest = False
-
-            try:
-                input_list = htables[iset_index][z_target]
-            except KeyError:
-                if iset_index <= 1 and is_longest:
-                    print(" "*(len(self.instruction_sets)-iset_index), f"in {iset_index}: no ztarget for {z_target} in the hash table at {inputs_so_far}")
-                return None
-            #sort the list so that the largest win comes first -- this ensures the answer will be
-            #the largest answer
-            input_list.sort(key=lambda n: n[0], reverse=True)
-            # print(input_list)
-            # print(" "*(len(self.instruction_sets)-iset_index), f"in {iset_index}: target z = {z_target} --> {input_list}")
-
-            if iset_index > 0:
-                for win, zin in input_list:
-                    if iset_index == 1:
-                        print(" "*(len(self.instruction_sets)-iset_index), f"in {iset_index}: trying {win}, {zin}")
-                    #recurse
-                    result = recurse_htable(zin, iset_index-1, [win]+inputs_so_far)
-                    if result is not None:
-                        return result
-                    # else:
-                if iset_index == 1:
-                    print(" "*(len(self.instruction_sets)-iset_index), f"in {iset_index}: no result for ztarget {z_target} for {[win]+inputs_so_far}")
-                return None
-            else:
-                #halting condition on first iset:
-                # the z input on the first set must be 0
-                for win, zin in input_list:
-                    if zin == 0:
-                        result = [win] + inputs_so_far
-                        print("SUCCESS: ", result)
-                        return result
-                print(" "*(len(self.instruction_sets)-iset_index), f"in {iset_index}: no result with zin==0 z_target {z_target} for {[win]+inputs_so_far}")
-                return None
-
-        iset_index = len(self.instruction_sets)-1
-        retval = recurse_htable(0, iset_index, [])
-        return retval
+        self.z_limits = initial_limits
+        self.z_limits_expanded = [True]*len(self.instruction_sets)
+        self.valid_results_by_iset_index = defaultdict(dict) #map of iset index to map of (win, zin)->zout values seen in testing 
 
 
+    def backsolve_iteration(self):
+
+        prev_z_target_counts = [0]*len(self.instruction_sets)
+        converged = False
+
+        while not converged:
+
+            converged = True #we will unset this in the iteration
+
+            #initialise one iteration of the search
+            iset_index = len(self.instruction_sets)-1
+            z_targets = set([0])  # initial target is 0 because 0 is the valid output we are seeking from the algorithm
+
+            print(f"Using limits {self.z_limits}")
+
+            while iset_index > 0:
+                new_z_targets = set()
+
+                should_new_search = any([ was_expanded for index, was_expanded in enumerate(self.z_limits_expanded) if index >= iset_index])
+                if should_new_search:
+                    print(f"for iset {iset_index}, searching zin range {self.z_limits[iset_index]}")
+                    for zin in range(0,self.z_limits[iset_index]+1):
+                        #progress indicator
+                        if zin % 100000 == 0 and zin > 0:
+                            print(f"iset_index={iset_index}, zin={zin}")
+                        for win in self.digits:
+                            state = ALUstate()
+                            state.registers['z'] = zin
+                            self.alu.run_instruction_sequence(state, self.instruction_sets[iset_index], win)
+                            if state.registers['z'] in z_targets:
+                                new_z_targets.add(zin)
+                                self.valid_results_by_iset_index[iset_index][(win, zin)] = state.registers['z']
+                else:
+                    #reuse the existing results
+                    for w,z in self.valid_results_by_iset_index[iset_index].keys():
+                        new_z_targets.add(z)
+                    print(f"for iset {iset_index}, reusing {len(new_z_targets)} results")
+
+                #check results and limits
+                if len(new_z_targets) == 0:
+                    print(f"halt iteration at {iset_index} because no z_targets produced")
+                    converged = False
+                    self.z_limits[iset_index] = self.z_limits[iset_index] * 2
+                    self.z_limits_expanded[iset_index] = True
+                    print(f"increasing z_limit for {iset_index} to {self.z_limits[iset_index]}")
+                elif len(new_z_targets) > prev_z_target_counts[iset_index]:
+                    #we fount more results, so increase our limit
+                    print(f"for {iset_index}, found {len(new_z_targets)}, an increase from {prev_z_target_counts[iset_index]} the previous round")
+                    converged = False
+                    self.z_limits[iset_index] = self.z_limits[iset_index] * 2
+                    self.z_limits_expanded[iset_index] = True
+                    print(f"increasing z_limit for {iset_index} to {self.z_limits[iset_index]}")
+                else:
+                    print(f"for {iset_index}, found {len(new_z_targets)}, no increase from {prev_z_target_counts[iset_index]} the previous round")
+                    print(f"Maintaining z_limit for {iset_index} at {self.z_limits[iset_index]}")
+                    self.z_limits_expanded[iset_index] = False
+
+                #remeber how many results we saw            
+                prev_z_target_counts[iset_index] = len(new_z_targets)
+
+                #iterate the loop state
+                z_targets = new_z_targets
+                iset_index -= 1
+
+                if len(new_z_targets) == 0:
+                    break #break the inner loop to start a new convergence iteration
+
+        #the values have converged
 
     def get_important_inputs_for_instruction_sets(self):
         alu_state = ALUstate()
@@ -316,230 +303,95 @@ class AluTree:
             print("*"*80)
 
 
-    def run(self):
-        initial_alu_state = ALUstate()
-        self.solutions = self._iterate_place(0, initial_alu_state, "")
+def pairwise(list_val):
+    for l1, l2 in zip(list_val[:-1], list_val[1:]):
+        yield l1, l2
 
-    def _iterate_place(self, depth, parent_alu_state, parent_input_string):
-        this_instruction_set = self.instruction_sets[depth]
-        z_values_seen = set()
-        for digit in self.digits:
-            #make a copy of the parent ALU state and run the current digit
-            current_alu_state = parent_alu_state.copy()
-            self.alu.run_instruction_sequence(current_alu_state, this_instruction_set, digit)
-            
-            #see if we've seen this Z value before:
-            z_val = current_alu_state.registers['z']
-            if z_val in z_values_seen:
-                print(f"Skipping further iteration after {parent_input_string+str(digit)} because we've already seen the Z value {z_val}")
-                continue
+
+def load_data(lines):
+    z_limits = {
+        13: 10000, 
+        12: 10000, 
+        11: 40000, 
+        10: 40000, 
+        9: 1024000, 
+        8: 1024000, 
+        7: 1024000, 
+        6: 1024000, 
+        5: 1024000, 
+        4: 1024000, 
+        3: 1024000, 
+        2: 1024000, 
+        1: 512000, 
+        0: 32000
+    }
+    z_limits = { k:int(v/2) for k,v in z_limits.items() }
+
+    atree = AluTree(lines, z_limits)
+    assert len(atree.instruction_sets) == 14
+
+    return atree
+
+def part1_backsolve(atree):
+
+    try:
+        atree.backsolve_iteration()
+    except Exception as ex:
+        print(f"Caught exception: {ex}")
+
+    with open('day24_backtrace_results.txt', 'w') as outfile:
+        outfile.write(str(dict(atree.valid_results_by_iset_index)))
+
+def part1_find_soln(atree):
+
+    with open('day24_backtrace_results.txt') as infile:
+        data = eval(infile.read())
+
+    # global max_word_seen
+
+    def recurse_data(iset_index, z_match_value, number_values, z_list):
+        #just get the results that match the z value we are looking for
+        iset_inputs = [ isi for isi in data[iset_index].keys() if isi[1] == z_match_value]
+        # print(f"iset_inputs for {iset_index}: {iset_inputs}")
+        #sort by largest w first    
+        iset_inputs = sorted(iset_inputs, key=lambda i: i[0], reverse=True)
+        # print(f"Keys for {iset_index}: {iset_inputs}") 
+        for iset_input in iset_inputs:
+            win, zin = iset_input
+            # print(win, zin, z_match_value)
+            assert zin == z_match_value
+            iset_zout = data[iset_index][iset_input]
+            #recurse until we get to the end
+            if iset_index < len(atree.instruction_sets)-1:
+                retval = recurse_data(iset_index+1, iset_zout, number_values+str(win), z_list + [zin])
+                if retval is not None:
+                    return retval
             else:
-                # print(f"new zval after {parent_input_string+str(digit)}: {z_val}")
-                z_values_seen.add(z_val)
+                # we are at the end
+                final_result = number_values+str(win)
+                print(f"at {iset_index}, number_value:", final_result)
+                return final_result, z_list + [zin, iset_zout]
 
-            #recurse for additional digits
-            if depth == self.places-1:
-                #halting condition, check the Z register
-                self.number_processed += 1
-                if current_alu_state.registers['z'] == 0:
-                    #we found a valid program return
-                    final_number = parent_input_string + str(digit)
-                    print("VALID RETURN: ", final_number)
-                    self.all_valid_results.append(final_number)
-                else:
-                    if self.number_processed % 100000 == 0:
-                        print("Progress:", parent_input_string + str(digit))
-            else:
-                #recurse for the next place
-                self._iterate_place(depth+1, current_alu_state, parent_input_string+str(digit))
-
-class ModelNumSequence:
-
-    def __init__(self):
-        self.digits = [9]*14
-
-    def get_digits(self):
-        return list(self.digits)
-
-    def _internal_decrement(self, place):
-        self.digits[place] -= 1
-        # print("after decrement of", place, ":", self.digits)
-        if self.digits[place] == 0:
-            self.digits[place] = 9
-            if place > 0:
-                self._internal_decrement(place-1)
-            else:
-                raise RuntimeError("Underflow")
-
-    def decrement(self):
-        try:
-            self._internal_decrement(len(self.digits)-1)
-            return True
-        except RuntimeError:
-            print("Underflow")
-            return False
-
-class BacksolveNode:
-    def __init__(self, alu, instruction_sets, instruction_set_index, wlist, z_limit, z_target):
-        self.cache = {} #map of win, zin -> zout
-        self.alu = alu
-        self.instruction_sets = instruction_sets
-        self.instruction_set_index = instruction_set_index
-        self.wlist = wlist
-        self.z_limit = z_limit
-        self.z_target = z_target
-        self.depth = len(self.instruction_sets)-self.instruction_set_index
-
-        self.child_map = {} #map of children nodes to z inputs
-    
-    def test_z(self, wval, zval):
-        ckey = (wval,zval)
-        try:
-            return self.cache[ckey]
-        except KeyError:
-            pass
-        alu_state = ALUstate()
-        alu_state.registers['z'] = zval
-        self.alu.run_instruction_sequence(alu_state, self.instruction_sets[self.instruction_set_index], wval)
-        # print(f"in {self.instruction_set_index}, {wval} {zval} -> {alu_state.registers['z']} ")
-        self.cache[ckey] = alu_state.registers['z']
-        return alu_state.registers['z']
-
-    def _find_inputs_for_z_value(self):
-        for wval in self.wlist:
-            for current_z in range(0, self.z_limit+1):
-                z_out = self.test_z(wval, current_z)
-                if z_out == self.z_target:
-                    yield wval, -current_z
-                if current_z > 0:
-                    z_out = self.test_z(wval, -current_z)
-                    if z_out == self.z_target:
-                        yield wval, -current_z
-            # no more
-
-    def _find_inputs_for_final_z_value(self):
-
-        for wval in self.wlist:
-            z_out = self.test_z(wval, 0)
-            if z_out == self.z_target:
-                yield wval, 0
-            # no more
-
-    def run(self):
-        # print(f"in {self.instruction_set_index}: searching for {self.z_target}")
-        if self.instruction_set_index > 0:
-            for win, zin in self._find_inputs_for_z_value():
-                #skip zinputs we have already searched
-                if zin in self.child_map:
-                    print(" "*self.depth, f"in {self.instruction_set_index}: skip DUPLICATE ZIN {win},{zin}->{self.z_target}")
-                    continue
-                print(" "*self.depth, f"in {self.instruction_set_index}: found {win},{zin}->{self.z_target}")
-                #new child to iterate
-                new_child = BacksolveNode(self.alu, self.instruction_sets, self.instruction_set_index-1, self.wlist, self.z_limit, zin)
-                self.child_map[zin] = new_child
-                for child_result in new_child.run():
-                    yield [SearchState(win, zin, self.z_target)] + child_result
-        else:
-            #we are in the final instruction set, so do a special search over the wlist with the zin = 0
-            for win, zin in self._find_inputs_for_final_z_value():
-                yield [SearchState(win, zin, self.z_target)]        
-        # print(f"in {self.instruction_set_index}: finished searching for {self.z_target}")
+        # global max_word_seen
 
 
-class Backsolver:
-    def __init__(self, instruction_sets, zlimit):
-        self.alu = ALU()
-        self.instruction_sets = instruction_sets
-        self.wlist = [9,8,7,6,5,4,3,2,1]
-        self.zlimit = zlimit
-
-    def run(self):
-        results = []
-        root = BacksolveNode(self.alu, self.instruction_sets, len(self.instruction_sets)-1, self.wlist, self.zlimit, 0)
-        for result in root.run():
-            results.append(result)
-            print("RESULT:", result)
-        return results
-
-
-
-def part1_bruteforce(lines):
-
-    alu = ALU()
-    program = alu.parse_instructions(lines)
-
-    digits = ModelNumSequence()
-    digit_count = 0
-    while 1:
-        input_vals = digits.get_digits()
-        alu.run_instruction_sequence(program, input_vals)
-        if alu.registers['z'] == 0:
-            print("MONAD found: ", input_vals)
-        digit_count += 1
-        if digit_count % 10000 == 0:
-            print("Progress:", input_vals)
-        if not digits.decrement():
-            break
-        
-
-def part1_tryout(lines):
-    atree = AluTree(lines)
-
-    wlist = [1,2,3,4,5,6,7,8,9]
-
-    zout = []
-    for w in wlist:
-        print(f"w={w} for iset 0")
-        state = ALUstate()
-        atree.alu.run_instruction_sequence(state, atree.instruction_sets[0], w, verbose=True)
-        print(state)
-        zout.append(state.registers['z'])
-        print()
-
-    # #second set
-    # zin = list(zout)
-    # zout = []
-    # for w in wlist:
-    #     for z in zin:
-    #         # print(f"w={w} for iset 0")
-    #         state = ALUstate()
-    #         state.registers['z'] = z
-    #         atree.alu.run_instruction_sequence(state, atree.instruction_sets[1], w)
-    #         # print(state)
-    #         zout.append(state.registers['z'])
-    #         print(f"w{w}, z{z} -> zout{state.registers['z']}")
-
-def part1_tree(lines):
-    atree = AluTree(lines)
-
-    zlimit = 5000
-    while 1:
-        print("Running with limit", zlimit)
-        bs = Backsolver(atree.instruction_sets, zlimit)
-        results = bs.run()
-        if len(results) > 0:
-            break
-        zlimit *= 2
-
-    print (results)    
-
-
-def part1_hash_tables(lines):
-    atree = AluTree(lines)
-
-    result = None
-    table_size = 10000
-    while result is None:
-        print("hashing with table size ", table_size)
-        result = atree.search_with_hash_tables(table_size)
-        table_size *= 2
-
+    # print(data.keys())
+    result = recurse_data(1, 0, "", [])
     print(result)
+
+
+    TODO 
+    - add the 0th elementt to the backtrace loop
+    - make sure we have really got the right ele
+    - if everything is converged but the last one, then double all the z limits and re-iterate
+
 
 if __name__ == "__main__":
     with open('day24.txt') as infile:
         lines = infile.readlines()
 
-    # part1_tree(lines)
-    # part1_tryout(lines)
-    part1_hash_tables(lines)
+    atree = load_data(lines)
+
+    # part1_backsolve(atree)
+
+    part1_find_soln(atree)
