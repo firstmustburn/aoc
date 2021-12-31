@@ -199,47 +199,65 @@ class AluTree:
 
             print(f"Using limits {self.z_limits}")
 
-            while iset_index > 0:
+            while iset_index >= 0:
                 new_z_targets = set()
 
-                should_new_search = any([ was_expanded for index, was_expanded in enumerate(self.z_limits_expanded) if index >= iset_index])
-                if should_new_search:
-                    print(f"for iset {iset_index}, searching zin range {self.z_limits[iset_index]}")
-                    for zin in range(0,self.z_limits[iset_index]+1):
-                        #progress indicator
-                        if zin % 100000 == 0 and zin > 0:
-                            print(f"iset_index={iset_index}, zin={zin}")
-                        for win in self.digits:
-                            state = ALUstate()
-                            state.registers['z'] = zin
-                            self.alu.run_instruction_sequence(state, self.instruction_sets[iset_index], win)
-                            if state.registers['z'] in z_targets:
-                                new_z_targets.add(zin)
-                                self.valid_results_by_iset_index[iset_index][(win, zin)] = state.registers['z']
-                else:
-                    #reuse the existing results
-                    for w,z in self.valid_results_by_iset_index[iset_index].keys():
-                        new_z_targets.add(z)
-                    print(f"for iset {iset_index}, reusing {len(new_z_targets)} results")
+                if iset_index > 0:
+                    should_new_search = any([ was_expanded for index, was_expanded in enumerate(self.z_limits_expanded) if index >= iset_index])
+                    if should_new_search:
+                        print(f"for iset {iset_index}, searching zin range {self.z_limits[iset_index]}")
+                        for zin in range(0,self.z_limits[iset_index]+1):
+                            #progress indicator
+                            if zin % 100000 == 0 and zin > 0:
+                                print(f"iset_index={iset_index}, zin={zin}")
+                            for win in self.digits:
+                                state = ALUstate()
+                                state.registers['z'] = zin
+                                self.alu.run_instruction_sequence(state, self.instruction_sets[iset_index], win)
+                                if state.registers['z'] in z_targets:
+                                    new_z_targets.add(zin)
+                                    self.valid_results_by_iset_index[iset_index][(win, zin)] = state.registers['z']
+                    else:
+                        #reuse the existing results
+                        for w,z in self.valid_results_by_iset_index[iset_index].keys():
+                            new_z_targets.add(z)
+                        print(f"for iset {iset_index}, reusing {len(new_z_targets)} results")
 
-                #check results and limits
-                if len(new_z_targets) == 0:
-                    print(f"halt iteration at {iset_index} because no z_targets produced")
-                    converged = False
-                    self.z_limits[iset_index] = self.z_limits[iset_index] * 2
-                    self.z_limits_expanded[iset_index] = True
-                    print(f"increasing z_limit for {iset_index} to {self.z_limits[iset_index]}")
-                elif len(new_z_targets) > prev_z_target_counts[iset_index]:
-                    #we fount more results, so increase our limit
-                    print(f"for {iset_index}, found {len(new_z_targets)}, an increase from {prev_z_target_counts[iset_index]} the previous round")
-                    converged = False
-                    self.z_limits[iset_index] = self.z_limits[iset_index] * 2
-                    self.z_limits_expanded[iset_index] = True
-                    print(f"increasing z_limit for {iset_index} to {self.z_limits[iset_index]}")
+                    #check results and limits
+                    if len(new_z_targets) == 0:
+                        print(f"halt iteration at {iset_index} because no z_targets produced")
+                        converged = False
+                        self.z_limits[iset_index] = self.z_limits[iset_index] * 2
+                        self.z_limits_expanded[iset_index] = True
+                        print(f"increasing z_limit for {iset_index} to {self.z_limits[iset_index]}")
+                    elif len(new_z_targets) > prev_z_target_counts[iset_index]:
+                        #we fount more results, so increase our limit
+                        print(f"for {iset_index}, found {len(new_z_targets)}, an increase from {prev_z_target_counts[iset_index]} the previous round")
+                        converged = False
+                        self.z_limits[iset_index] = self.z_limits[iset_index] * 2
+                        self.z_limits_expanded[iset_index] = True
+                        print(f"increasing z_limit for {iset_index} to {self.z_limits[iset_index]}")
+                    else:
+                        print(f"for {iset_index}, found {len(new_z_targets)}, no increase from {prev_z_target_counts[iset_index]} the previous round")
+                        print(f"Maintaining z_limit for {iset_index} at {self.z_limits[iset_index]}")
+                        self.z_limits_expanded[iset_index] = False
                 else:
-                    print(f"for {iset_index}, found {len(new_z_targets)}, no increase from {prev_z_target_counts[iset_index]} the previous round")
-                    print(f"Maintaining z_limit for {iset_index} at {self.z_limits[iset_index]}")
-                    self.z_limits_expanded[iset_index] = False
+                    print(f"for iset {iset_index}, use zin=0")
+                    zin = 0
+                    for win in self.digits:
+                        state = ALUstate()
+                        state.registers['z'] = zin
+                        self.alu.run_instruction_sequence(state, self.instruction_sets[iset_index], win)
+                        if state.registers['z'] in z_targets:
+                            new_z_targets.add(zin)
+                            self.valid_results_by_iset_index[iset_index][(win, zin)] = state.registers['z']
+                    
+                    if converged and len(new_z_targets) == 0:
+                        #double all limits
+                        print(f"for {iset_index}, found no results, so increasing all z limits")
+                        self.z_limits = { k: v*2 for k,v in self.z_limits.items() }
+                        self.z_limits_expanded = [ True for v in self.z_limits_expanded ]
+                        converged = False
 
                 #remeber how many results we saw            
                 prev_z_target_counts[iset_index] = len(new_z_targets)
@@ -248,9 +266,17 @@ class AluTree:
                 z_targets = new_z_targets
                 iset_index -= 1
 
+
+
+
                 if len(new_z_targets) == 0:
                     break #break the inner loop to start a new convergence iteration
 
+            #done with this iteration
+            print("Saving intermediate results to day24_backtrace_results_temp.txt")
+            with open('day24_backtrace_results_temp.txt', 'w') as outfile:
+                outfile.write(str(dict(self.valid_results_by_iset_index)))
+ 
         #the values have converged
 
     def get_important_inputs_for_instruction_sets(self):
@@ -339,13 +365,10 @@ def part1_backsolve(atree):
     except Exception as ex:
         print(f"Caught exception: {ex}")
 
-    with open('day24_backtrace_results.txt', 'w') as outfile:
+    with open('day24_backtrace_results_final.txt', 'w') as outfile:
         outfile.write(str(dict(atree.valid_results_by_iset_index)))
 
-def part1_find_soln(atree):
-
-    with open('day24_backtrace_results.txt') as infile:
-        data = eval(infile.read())
+def part1_find_soln(data, atree, largest=True):
 
     # global max_word_seen
 
@@ -354,11 +377,11 @@ def part1_find_soln(atree):
         iset_inputs = [ isi for isi in data[iset_index].keys() if isi[1] == z_match_value]
         # print(f"iset_inputs for {iset_index}: {iset_inputs}")
         #sort by largest w first    
-        iset_inputs = sorted(iset_inputs, key=lambda i: i[0], reverse=True)
+        iset_inputs = sorted(iset_inputs, key=lambda i: i[0], reverse=largest)
         # print(f"Keys for {iset_index}: {iset_inputs}") 
         for iset_input in iset_inputs:
             win, zin = iset_input
-            # print(win, zin, z_match_value)
+            print(f"at {iset_index}, ({win}, {zin}) -> {z_match_value}; running number={number_values}")
             assert zin == z_match_value
             iset_zout = data[iset_index][iset_input]
             #recurse until we get to the end
@@ -376,14 +399,8 @@ def part1_find_soln(atree):
 
 
     # print(data.keys())
-    result = recurse_data(1, 0, "", [])
+    result = recurse_data(0, 0, "", [])
     print(result)
-
-
-    TODO 
-    - add the 0th elementt to the backtrace loop
-    - make sure we have really got the right ele
-    - if everything is converged but the last one, then double all the z limits and re-iterate
 
 
 if __name__ == "__main__":
@@ -394,4 +411,46 @@ if __name__ == "__main__":
 
     # part1_backsolve(atree)
 
-    part1_find_soln(atree)
+    with open('day24_backtrace_results_final.txt') as infile:
+        data = eval(infile.read())
+
+    print("Largest val")
+    part1_find_soln(data, atree, True)
+    print("Smallest val")
+    part1_find_soln(data, atree, False)
+
+
+# Largest val
+# at 0, (4, 0) -> 0; running number=
+# at 1, (5, 18) -> 18; running number=4
+# at 2, (9, 479) -> 479; running number=45
+# at 3, (8, 12469) -> 12469; running number=459
+# at 4, (9, 324215) -> 324215; running number=4598
+# at 5, (9, 12469) -> 12469; running number=45989
+# at 6, (2, 324211) -> 324211; running number=459899
+# at 7, (9, 12469) -> 12469; running number=4598992
+# at 8, (9, 324213) -> 324213; running number=45989929
+# at 9, (4, 8429555) -> 8429555; running number=459899299
+# at 10, (6, 324213) -> 324213; running number=4598992994
+# at 11, (1, 12469) -> 12469; running number=45989929946
+# at 12, (9, 479) -> 479; running number=459899299461
+# at 13, (9, 18) -> 18; running number=4598992994619
+# at 13, number_value: 45989929946199
+# ('45989929946199', [0, 18, 479, 12469, 324215, 12469, 324211, 12469, 324213, 8429555, 324213, 12469, 479, 18, 0])
+# Smallest val
+# at 0, (1, 0) -> 0; running number=
+# at 1, (1, 15) -> 15; running number=1
+# at 2, (9, 397) -> 397; running number=11
+# at 3, (1, 10337) -> 10337; running number=119
+# at 4, (2, 268776) -> 268776; running number=1191
+# at 5, (8, 10337) -> 10337; running number=11912
+# at 6, (1, 268778) -> 268778; running number=119128
+# at 7, (4, 10337) -> 10337; running number=1191281
+# at 8, (6, 268776) -> 268776; running number=11912814
+# at 9, (1, 6988190) -> 6988190; running number=119128146
+# at 10, (1, 268776) -> 268776; running number=1191281461
+# at 11, (1, 10337) -> 10337; running number=11912814611
+# at 12, (5, 397) -> 397; running number=119128146111
+# at 13, (6, 15) -> 15; running number=1191281461115
+# at 13, number_value: 11912814611156
+# ('11912814611156', [0, 15, 397, 10337, 268776, 10337, 268778, 10337, 268776, 6988190, 268776, 10337, 397, 15, 0])
