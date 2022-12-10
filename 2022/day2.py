@@ -85,12 +85,13 @@ def part2(games):
     return play_games(games, compute_score_2)
 
 
-# filename="day2/test.txt"
-filename="day2/input.txt"
+if __name__ == '__main__':
+    # filename="day2/test.txt"
+    filename="day2/input.txt"
 
-games = load_token_list(filename)
+    games = load_token_list(filename)
 
-print("part 1", part1(games))
+    print("part 1", part1(games))
 
-print("part 2", part2(games))
+    print("part 2", part2(games))
 

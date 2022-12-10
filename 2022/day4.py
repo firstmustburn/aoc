@@ -39,15 +39,16 @@ def part2(apairs):
             overlapped.append(apair)
     return len(overlapped)
 
+if __name__ == '__main__':
 
-filename="day4/test.txt"
-filename="day4/input.txt"
+    filename="day4/test.txt"
+    filename="day4/input.txt"
 
-apairs = load_input(filename)
+    apairs = load_input(filename)
 
-# pprint(apairs)
+    # pprint(apairs)
 
-# print("part 1", part1(apairs))
+    # print("part 1", part1(apairs))
 
-print("part 2", part2(apairs))
+    print("part 2", part2(apairs))
 

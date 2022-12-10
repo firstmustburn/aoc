@@ -3,23 +3,28 @@ from pprint import pprint
 from collections import namedtuple
 
 
+def multipop(lst, amt):
+    removed = lst[-amt:]
+    lst = lst[:len(lst)-amt]
+    return removed, lst
+
 class Port:
 
     def __init__(self, columns):
         self.columns = columns
 
+    def tops(self):
+        top = ""
+        for column in self.columns:
+            top += column[-1]
+        return top
+
     def dump(self):
         height = max([ len(c) for c in self.columns])
-        print_cols = [ (c + [' ']*height)[:len(self.columns)] for c in self.columns ]
+        print_cols = [ (c + [' ']*height)[:height] for c in self.columns ]
         print_rows = []
 
-        print('height', height)
-
         for h in range(height):
-            for c in print_cols:
-                print('c',c)
-                print('h',h)
-                print('c[h]', c[h])
             row = [ c[h] for c in print_cols ]
             print_rows.append(row)
 
@@ -27,12 +32,19 @@ class Port:
 
         for row in print_rows:
             print(' '.join([ f'[{c}]' if c != ' ' else '   ' for c in row ]))
+        print('')
 
-    def make_move(self, move):
+    def make_move_1(self, move):
         for i in range(move.amount):
-            crate = self.columns[move.from_col].pop()
-            self.columns[move.to_col].append(crate)
-                
+            #column numbers are one-indexed
+            crate = self.columns[move.from_col-1].pop()
+            self.columns[move.to_col-1].append(crate)
+
+    def make_move_2(self, move):
+        crates, self.columns[move.from_col-1] = multipop(self.columns[move.from_col-1], move.amount)
+        self.columns[move.to_col-1] += crates
+
+
 def parse_stack(stack_lines):
     #remove the last stack line, then reverse them
     stack_lines = list(stack_lines)
@@ -62,9 +74,6 @@ def parse_stack(stack_lines):
 
     return Port(columns)
 
-
-
-
 Move = namedtuple('Move', ['amount', 'from_col', 'to_col'])
 
 def parse_moves(move_lines):
@@ -75,7 +84,6 @@ def parse_moves(move_lines):
         moves.append(move)
 
     return moves
-
 
 def load_input(filename):
     stack_lines = []
@@ -90,29 +98,34 @@ def load_input(filename):
                 #add lines to the stack
                 stack_lines.append(line)
             else:
-                #add lines to the moves
+                        #add lines to the moves
                 move_lines.append(line)
     return parse_stack(stack_lines), parse_moves(move_lines)
 
 def part1(stack, moves):
     stack.dump()
     for move in moves:
-        stack.make_move(move)
+        stack.make_move_1(move)
         stack.dump()
+    return stack.tops()
 
 def part2(stack, moves):
-    pass
+    stack.dump()
+    for move in moves:
+        print(move)
+        stack.make_move_2(move)
+        stack.dump()
+    return stack.tops()
 
-filename="day5/test.txt"
-# filename="day5/input.txt"
 
-stack, moves = load_input(filename)
+if __name__ == '__main__':
 
-# pprint(stack)
-# stack.dump()
-# pprint(moves)
+    filename="day5/test.txt"
+    filename="day5/input.txt"
 
-print("part 1", part1(stack, moves))
+    stack, moves = load_input(filename)
 
-# print("part 2", part2(stack, moves))
+    # print("part 1", part1(stack, moves))
+
+    print("part 2", part2(stack, moves))
 

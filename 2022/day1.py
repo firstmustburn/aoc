@@ -18,11 +18,12 @@ def part2(filename):
     return sum(elf_counts[-3:])
     
 
+if __name__ == '__main__':
 
-# filename="day1/test.txt"
-filename="day1/input.txt"
+    # filename="day1/test.txt"
+    filename="day1/input.txt"
 
-print("part 1", part1(filename))
+    print("part 1", part1(filename))
 
-print("part 2", part2(filename))
+    print("part 2", part2(filename))
 

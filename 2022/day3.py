@@ -67,14 +67,14 @@ def part2(sacks):
 
 
 
+if __name__ == '__main__':
 
+    # filename="day3/test.txt"
+    filename="day3/input.txt"
 
-# filename="day3/test.txt"
-filename="day3/input.txt"
+    sacks = load_sacks(filename)
 
-sacks = load_sacks(filename)
+    # print("part 1", part1(sacks))
 
-# print("part 1", part1(sacks))
-
-print("part 2", part2(sacks))
+    print("part 2", part2(sacks))
 
