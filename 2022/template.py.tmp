@@ -1,0 +1,27 @@
+
+from pprint import pprint
+from collections import namedtuple
+
+def load_input(filename):
+    with open(filename) as infile:
+        for line in infile:
+            pass
+    return something
+
+def part1(something):
+    pass
+
+def part2(something):
+    pass
+
+if __name__ == '__main__':
+
+    # filename='day9/test.txt'
+    filename='day9/input.txt'
+
+    something = load_input(filename)
+
+    print('part 1', part1(something))
+
+    print('part 2', part2(something))
+
