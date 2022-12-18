@@ -84,8 +84,7 @@ class FlowState:
         self.open_valves = open_valves
         self._flow = None
         self._total_flow = None
-        self.children = []
-
+ 
     def __str__(self):
         return f'At {self.get_location_names()}, Time {self.time}, Open: {self.open_valves}, Flow={self.get_flow()}, Total Flow={self.get_total_flow()}'
 
@@ -144,11 +143,11 @@ class FlowState:
 
 
     def iterate_state(self) -> List[FlowState]:
-        self.children = []
+        children = []
 
         #short circuit because there's no time left in the sim        
         if self.time == self.sim.LAST_TIME:
-            return self.children
+            return children
 
         # short circuit if there are no openable valves -- no point in moving anywhere
         # so just return the same state until we count down to 0
@@ -160,8 +159,8 @@ class FlowState:
                 time=self.time-1,
                 locations = list(self.locations),
                 open_valves = list(self.open_valves) )
-            self.children.append(new_state)            
-            return self.children
+            children.append(new_state)            
+            return children
 
         #generate new states for opening a valve and moving to other locations
         actionsets: List[List[Action]] = []
@@ -205,13 +204,13 @@ class FlowState:
                 time=self.time-1,
                 locations = new_locations,
                 open_valves = self.open_valves + new_valves )
-            self.children.append(new_state)
+            children.append(new_state)
 
         #sort the states so states with larger flows are processed first
-        self.children.sort(key=lambda s: s.get_total_flow(), reverse=True)
+        children.sort(key=lambda s: s.get_total_flow(), reverse=True)
         
         #done iterating
-        return self.children
+        return children
 
 
 class FlowSearch:
@@ -290,7 +289,6 @@ class FlowSearch:
 
         if should_prune:
             # print("Pruning state that can never reach the current max", state)
-            state.parent.children.remove(state)
             self.prune_count += 1
             self.leaf_count -= 1
             return
@@ -306,6 +304,7 @@ def part1(valves):
     fs  = FlowSearch(valves, ['AA'], 30)
     fs.find_max_flow_state()
     # fs.dump()
+    print("final node count", fs.node_count, "final prune count", fs.prune_count)
 
     max_state = fs.max_state
     path = max_state.get_path()
@@ -324,9 +323,6 @@ def part2(valves):
         print(s)
     return max_state.get_total_flow()
 
-
-    pass
-
 if __name__ == '__main__':
 
     # filename='day16/test.txt'
@@ -336,7 +332,7 @@ if __name__ == '__main__':
 
     pprint(valves)
 
-    # print('part 1', part1(valves))
+    print('part 1', part1(valves))
 
-    print('part 2', part2(valves))
+    # print('part 2', part2(valves))
 
