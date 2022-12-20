@@ -114,6 +114,7 @@ class Chimney:
         self.grid = {} #map of points -> fill value
         self.y_max = -1
         self.y_min = -1
+        self.row_values = [] #a map of row number to single numeric (binary) representations of each row
 
     def get_value(self, x, y):
         return self.get_valuep(Point(x,y))
@@ -138,6 +139,7 @@ class Chimney:
         assert p.x >= 0 and p.x < self.width
         self.grid[p] = value
         self.y_max = max(self.y_max, p.y)
+        self._compute_row_value(p.y)
 
     def set_value(self, x, y, value):
         self.set_valuep(Point(x,y), value)
@@ -145,12 +147,19 @@ class Chimney:
     def get_ymax(self):
         return self.y_max
 
-    def get_row_value(self, y):
+    def get_row_value_sequence(self):
+        return list(self.row_values)
+
+    def _compute_row_value(self, y):
+        #row value computation
         value = 0
         for x in range(self.width):
             if self.get_value(x,y) != Shape.EMPTY:
                 value += 1 << x
-        return value
+        #set it into the list
+        while y >= len(self.row_values):
+            self.row_values.append(None)
+        self.row_values[y] = value
 
     def dump(self, shapes=None, y_range=None):
         if shapes is not None:
@@ -237,27 +246,30 @@ class PatternSearch:
     """Don't re-use this with sequences from a different chimney"""
     def __init__(self, chimney: Chimney, num_matches:int = 3):
         self.chimney = chimney
-        self.min_pattern_length = 2
+        self.min_pattern_length = 5
         self.num_matches = num_matches
         self.pattern = None
         self.prefix = None
+        self.previous_pattern_count = 0
 
     def _make_seq(self):
-        number_seq = []
-        for y in range(self.chimney.y_min+1, self.chimney.y_max+1):
-            number_seq.append(self.chimney.get_row_value(y))
-        return number_seq
+        return self.chimney.get_row_value_sequence()
+        # number_seq = []
+        # for y in range(self.chimney.y_min+1, self.chimney.y_max+1):
+        #     number_seq.append(self.chimney.get_row_value(y))
+        # return number_seq
 
     def _try_pattern(self, number_seq, prefix_len, pattern_len):
+        # print('prefix_len', prefix_len, 'pattern_len', pattern_len)
+        # print('number_seq to try:', number_seq)
         try:
             for offset_value in range(pattern_len):
                 pattern_offset = prefix_len + offset_value
                 ref_value = number_seq[pattern_offset]
                 for i in (1,self.num_matches+1):
-                    print(ref_value, number_seq[pattern_offset + i * pattern_len])
-                    TODO START HERE, DEBUG WHY 3 16s match
                     if ref_value != number_seq[pattern_offset + i * pattern_len]:
                         return False
+                    # print(f'at offset {offset_value}, {ref_value} == {number_seq[pattern_offset + i * pattern_len]}')
             return True
         except IndexError:
             return False
@@ -269,8 +281,8 @@ class PatternSearch:
         prefix_len = len(self.prefix)
         pattern_len = len(self.pattern)
         assert number_seq[:prefix_len] == self.prefix
-        offset = prefix_len
-        pattern_count = 0
+        offset = prefix_len + self.previous_pattern_count*pattern_len
+        pattern_count = self.previous_pattern_count
         while offset + pattern_len < len(number_seq):
             if number_seq[offset:offset+pattern_len] == self.pattern:
                 pattern_count += 1
@@ -279,6 +291,7 @@ class PatternSearch:
                 #no point in counting once the pattern is broken
                 break
         # print(f"suffix after {pattern_count} patterns is {number_seq[offset:]}")
+        self.previous_pattern_count = pattern_count
         return pattern_count
 
         # pattern_count = int((len(number_seq) - prefix_len)/pattern_len)
@@ -326,9 +339,12 @@ def part2(gas_sequence: GasSequence):
     pattern_search = PatternSearch(sim.chimney)
     found_pattern = False
 
-    sim.simulate(5)
+    sim_start = len(sim.shapes.grid_sequence)*len(gas_sequence.sequence)*4
+    print("Simulating ", sim_start,"parts to start out")
+    sim.simulate(sim_start)
     while not found_pattern:
-        sim.simulate(1)
+        sim.simulate(50)
+        print(f"searching for pattern with {sim.total_part_count} parts")
         found_pattern = pattern_search.find_pattern()
     
     #found pattern
@@ -339,14 +355,19 @@ def part2(gas_sequence: GasSequence):
     print("part count", sim.total_part_count)
 
     #run sim until we get another pattern completed
+    print("searching for next pattern completion")
     while pattern_count == pattern_search.count_patterns():
         sim.simulate(1)
+        print(f"   simulated {sim.total_part_count} parts")
 
+    print("searching for next pattern completion to count the parts in the cycle")
     pattern_count = pattern_search.count_patterns()
     pattern_part_len = 0
+    estimated_part_count = int(sim.total_part_count / pattern_count) - 50 #fudge factor
     while pattern_count == pattern_search.count_patterns():
         sim.simulate(1)
         pattern_part_len += 1
+        print(f"   simulated {sim.total_part_count} parts")
 
     print("Number of parts in pattern are: ", pattern_part_len)
 
