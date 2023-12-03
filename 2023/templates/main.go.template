@@ -1,0 +1,32 @@
+package main
+
+import (
+	"aoc2023/internal/helpers"
+	"fmt"
+	"os"
+)
+
+func main() {
+
+	d := &DayXXX{}
+
+	err := helpers.Dispatch(os.Args, d)
+	if err != nil {
+		fmt.Println("Error:", err)
+		os.Exit(1)
+	}
+
+}
+
+type DayXXX struct {
+}
+
+func (d *DayXXX) Part1(filename string) error {
+    fmt.Println("Part 1")
+	return nil
+}
+
+func (d *DayXXX) Part2(filename string) error {
+    fmt.Println("Part 2")
+	return nil
+}
