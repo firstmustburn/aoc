@@ -98,18 +98,22 @@ func (g *Game) Parse(input string) {
 }
 
 type Day2 struct {
+	lines []string
 }
 
-func (d *Day2) Part1(filename string) error {
+func (d *Day2) Setup(filename string) {
 
-	lines := helpers.ReadFileToLines(filename)
+	d.lines = helpers.ReadFileToLines(filename)
+}
+
+func (d *Day2) Part1() {
 
 	possibleRed := 12
 	possibleGreen := 13
 	possibleBlue := 14
 	possibleSum := 0
 
-	for _, line := range lines {
+	for _, line := range d.lines {
 		game := Game{}
 		game.Parse(line)
 		fmt.Printf("%#v\n", game)
@@ -123,17 +127,13 @@ func (d *Day2) Part1(filename string) error {
 	}
 
 	fmt.Println("Possible sum is", possibleSum)
-
-	return nil
 }
 
-func (d *Day2) Part2(filename string) error {
-
-	lines := helpers.ReadFileToLines(filename)
+func (d *Day2) Part2() {
 
 	powerSum := 0
 
-	for _, line := range lines {
+	for _, line := range d.lines {
 		game := Game{}
 		game.Parse(line)
 		fmt.Printf("game %#v\n", game)
@@ -149,5 +149,4 @@ func (d *Day2) Part2(filename string) error {
 
 	fmt.Println("Power sum is", powerSum)
 
-	return nil
 }

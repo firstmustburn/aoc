@@ -153,9 +153,7 @@ func (d *Day3) Setup(filename string) {
 
 }
 
-func (d *Day3) Part1(filename string) error {
-
-	d.Setup(filename)
+func (d *Day3) Part1() {
 
 	numberSum := 0
 
@@ -170,13 +168,9 @@ func (d *Day3) Part1(filename string) error {
 	}
 
 	fmt.Println("Number sum is", numberSum)
-
-	return nil
 }
 
-func (d *Day3) Part2(filename string) error {
-
-	d.Setup(filename)
+func (d *Day3) Part2() {
 
 	gearRatioSum := 0
 
@@ -194,6 +188,4 @@ func (d *Day3) Part2(filename string) error {
 	d.grid.WalkRCV(walker)
 
 	fmt.Println("gear ratio sum is", gearRatioSum)
-
-	return nil
 }

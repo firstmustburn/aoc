@@ -21,15 +21,18 @@ func main() {
 }
 
 type Day1 struct {
+	lines []string
 }
 
-func (d *Day1) Part1(filename string) error {
+func (d *Day1) Setup(filename string) {
+	d.lines = helpers.ReadFileToLines(filename)
+}
 
-	lines := helpers.ReadFileToLines(filename)
+func (d *Day1) Part1() {
 
-	calibrations := make([]int, 0, len(lines))
+	calibrations := make([]int, 0, len(d.lines))
 
-	for _, line := range lines {
+	for _, line := range d.lines {
 		calibration := ""
 
 		for _, c := range line {
@@ -47,7 +50,7 @@ func (d *Day1) Part1(filename string) error {
 
 		calibrationInt, err := strconv.Atoi(calibration)
 		if err != nil {
-			return fmt.Errorf("String conversion failed for %s: %w", calibration, err)
+			panic(fmt.Errorf("String conversion failed for %s: %w", calibration, err))
 		}
 
 		calibrations = append(calibrations, calibrationInt)
@@ -57,12 +60,11 @@ func (d *Day1) Part1(filename string) error {
 
 	fmt.Println("Calibrations")
 	for index, calibration := range calibrations {
-		fmt.Printf("%s -> %d\n", lines[index], calibration)
+		fmt.Printf("%s -> %d\n", d.lines[index], calibration)
 		sum += calibration
 	}
 
 	fmt.Println("Sum of calibrations is", sum)
-	return nil
 }
 
 var numberStrings = []string{
@@ -112,11 +114,10 @@ func peelNumbers(sin string) []int {
 	return numbers
 }
 
-func (d *Day1) Part2(filename string) error {
-	lines := helpers.ReadFileToLines(filename)
+func (d *Day1) Part2() {
 
 	sum := 0
-	for _, line := range lines {
+	for _, line := range d.lines {
 
 		numbers := peelNumbers(line)
 		calibration := numbers[0]*10 + numbers[len(numbers)-1]
@@ -126,5 +127,4 @@ func (d *Day1) Part2(filename string) error {
 	}
 
 	fmt.Println("Sum of calibrations is", sum)
-	return nil
 }

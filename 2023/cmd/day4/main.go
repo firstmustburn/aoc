@@ -8,7 +8,7 @@ import (
 
 func main() {
 
-	d := &DayXXX{}
+	d := &Day4{}
 
 	err := helpers.Dispatch(os.Args, d)
 	if err != nil {
@@ -18,18 +18,18 @@ func main() {
 
 }
 
-type DayXXX struct {
+type Day4 struct {
 }
 
-func (d *DayXXX) Setup(filename string) {
+func (d *Day4) Setup(filename string) {
 	fmt.Println("Setup")
 }
 
 
-func (d *DayXXX) Part1() {
+func (d *Day4) Part1() {
     fmt.Println("Part 1")
 }
 
-func (d *DayXXX) Part2() {
+func (d *Day4) Part2() {
     fmt.Println("Part 2")
 }
