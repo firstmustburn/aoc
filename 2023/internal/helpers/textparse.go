@@ -58,3 +58,23 @@ func ParseIntList(s string, sep string) []int {
 	}
 	return numbers
 }
+
+func ParseInt64List(s string, sep string) []int64 {
+	tokens := StripEmptyStrings(strings.Split(s, sep))
+
+	// for _, token := range tokens {
+	// 	fmt.Printf("'%s', ", token)
+	// }
+	// fmt.Println("")
+
+	numbers := make([]int64, len(tokens))
+
+	var err error
+	for index, token := range tokens {
+		numbers[index], err = strconv.ParseInt(token, 10, 64)
+		if err != nil {
+			panic(fmt.Errorf("could not convert '%s' to an int: %w", token, err))
+		}
+	}
+	return numbers
+}
