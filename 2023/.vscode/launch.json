@@ -10,7 +10,7 @@
             "request": "launch",
             "mode": "auto",
             "program": "${fileDirname}",
-            "args": ["2", "../../inputs/day5/test.txt"]
+            "args": ["2", "../../inputs/day7/test.txt"]
         }
     ]
 }
