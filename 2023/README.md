@@ -15,3 +15,10 @@ day1 1 inputs/day1/test.txt
 ```
 
 It's up to each part to do its own output on the commandline.
+
+
+Run tests on the helpers with:
+
+```sh
+go test aoc2023/internal/helpers
+```
