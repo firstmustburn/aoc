@@ -1,8 +1,65 @@
 package helpers
 
+import "fmt"
+
+type Direction int
+
+const NORTH Direction = 0
+const NORTH_EAST Direction = 1
+const EAST Direction = 2
+const SOUTH_EAST Direction = 3
+const SOUTH Direction = 4
+const SOUTH_WEST Direction = 5
+const WEST Direction = 6
+const NORTH_WEST Direction = 7
+
 type Coord struct {
 	Row int
 	Col int
+}
+
+func (d Direction) Opposite() Direction {
+	if d == NORTH {
+		return SOUTH
+	} else if d == NORTH_EAST {
+		return SOUTH_WEST
+	} else if d == EAST {
+		return WEST
+	} else if d == SOUTH_EAST {
+		return NORTH_WEST
+	} else if d == SOUTH {
+		return NORTH
+	} else if d == SOUTH_WEST {
+		return NORTH_EAST
+	} else if d == WEST {
+		return EAST
+	} else if d == NORTH_WEST {
+		return SOUTH_EAST
+	} else {
+		panic(fmt.Errorf("unknown direction %d", d))
+	}
+}
+
+func (c Coord) Dir(dir Direction) Coord {
+	if dir == NORTH {
+		return c.N()
+	} else if dir == NORTH_EAST {
+		return c.NE()
+	} else if dir == EAST {
+		return c.E()
+	} else if dir == SOUTH_EAST {
+		return c.SE()
+	} else if dir == SOUTH {
+		return c.S()
+	} else if dir == SOUTH_WEST {
+		return c.SW()
+	} else if dir == WEST {
+		return c.W()
+	} else if dir == NORTH_WEST {
+		return c.NW()
+	} else {
+		panic(fmt.Errorf("unknown direction %d", dir))
+	}
 }
 
 func (c Coord) N() Coord {
@@ -263,6 +320,22 @@ func (g *Grid[V]) Set(c Coord, newValue V) {
 
 func (g *Grid[V]) SetRC(row int, col int, newValue V) {
 	g.data[row][col] = newValue
+}
+
+func (g Grid[V]) Walk(f func(Coord)) {
+	for row := 0; row < g.rows; row++ {
+		for col := 0; col < g.cols; col++ {
+			f(Coord{row, col})
+		}
+	}
+}
+
+func (g Grid[V]) WalkV(f func(Coord, V)) {
+	for row := 0; row < g.rows; row++ {
+		for col := 0; col < g.cols; col++ {
+			f(Coord{row, col}, g.data[row][col])
+		}
+	}
 }
 
 func (g Grid[V]) WalkRC(f func(int, int)) {
