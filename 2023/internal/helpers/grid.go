@@ -18,6 +18,7 @@ type Coord struct {
 	Col int
 }
 
+// Opposite returns the direction opposite of this direction
 func (d Direction) Opposite() Direction {
 	if d == NORTH {
 		return SOUTH
@@ -37,6 +38,48 @@ func (d Direction) Opposite() Direction {
 		return SOUTH_EAST
 	} else {
 		panic(fmt.Errorf("unknown direction %d", d))
+	}
+}
+
+// GetDirection returns the direction you travel if you go from the |from| coord to the |to| coord
+// panics if the two coords are identical
+func GetDirection(from Coord, to Coord) Direction {
+
+	if to.Row > from.Row {
+		//larger to row = south
+		if to.Col > from.Col {
+			//larger to Col = east
+			return SOUTH_EAST
+		} else if to.Col < from.Col {
+			//smaller to Col = west
+			return SOUTH_WEST
+		} else {
+			//same col
+			return SOUTH
+		}
+	} else if to.Row < from.Row {
+		//smaller to row = north
+		if to.Col > from.Col {
+			//larger to Col = east
+			return NORTH_EAST
+		} else if to.Col < from.Col {
+			//smaller to Col = west
+			return NORTH_WEST
+		} else {
+			return NORTH
+		}
+	} else {
+		//same row, so it has to be east or west
+		if to.Col > from.Col {
+			//larger to Col = east
+			return EAST
+		} else if to.Col < from.Col {
+			//smaller to Col = west
+			return WEST
+		} else {
+			//if they are the same row and column, they are the same coord
+			panic("unreachable")
+		}
 	}
 }
 

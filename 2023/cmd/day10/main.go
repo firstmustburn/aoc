@@ -163,34 +163,12 @@ func (d *Day10) Part1() {
 
 }
 
-func GetDirection(from h.Coord, to h.Coord) h.Direction {
-
-	if to.Row > from.Row {
-		//larger to row = south
-		h.Assert(to.Col == from.Col, "not a cardinal direction")
-		return h.SOUTH
-	} else if to.Row < from.Row {
-		//smaller to row = north
-		h.Assert(to.Col == from.Col, "not a cardinal direction")
-		return h.NORTH
-	} else if to.Col > from.Col {
-		//larger to Col = east
-		h.Assert(to.Row == from.Row, "not a cardinal direction")
-		return h.EAST
-	} else if to.Col < from.Col {
-		//smaller to Col = west
-		h.Assert(to.Row == from.Row, "not a cardinal direction")
-		return h.WEST
-	}
-	panic("unreachable")
-}
-
 func (d *Day10) ReplaceStartInGrid() {
 	//figure out what kind of tile the start tile is and replace it with that in the grid
 	startCoord := d.path[0]
 	directions := []h.Direction{
-		GetDirection(startCoord, d.path[1]),
-		GetDirection(startCoord, d.path[len(d.path)-1]),
+		h.GetDirection(startCoord, d.path[1]),
+		h.GetDirection(startCoord, d.path[len(d.path)-1]),
 	}
 	if slices.Contains(directions, h.NORTH) && slices.Contains(directions, h.EAST) {
 		d.grid.Set(startCoord, GridData{c: TILE_NORTH_EAST})
