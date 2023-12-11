@@ -323,6 +323,22 @@ func (g Grid[V]) Get(c Coord) V {
 	return g.data[c.Row][c.Col]
 }
 
+func (g Grid[V]) GetRow(row int) []V {
+	ret := make([]V, 0, g.Cols())
+	for col := 0; col < g.Cols(); col++ {
+		ret = append(ret, g.data[row][col])
+	}
+	return ret
+}
+
+func (g Grid[V]) GetCol(col int) []V {
+	ret := make([]V, 0, g.Rows())
+	for row := 0; row < g.Rows(); row++ {
+		ret = append(ret, g.data[row][col])
+	}
+	return ret
+}
+
 func (g Grid[V]) GetRC(row int, col int) V {
 	return g.data[row][col]
 }
@@ -363,6 +379,13 @@ func (g *Grid[V]) Set(c Coord, newValue V) {
 
 func (g *Grid[V]) SetRC(row int, col int, newValue V) {
 	g.data[row][col] = newValue
+}
+
+func (g *Grid[V]) Fill(newValue V) {
+	walker := func(r int, c int) {
+		g.SetRC(r, c, newValue)
+	}
+	g.WalkRC(walker)
 }
 
 func (g Grid[V]) Walk(f func(Coord)) {

@@ -20,3 +20,10 @@ func SumSlice[V constraints.Integer | constraints.Float](input []V) V {
 	}
 	return theSum
 }
+
+func AbsInt(val int) int {
+	if val < 0 {
+		return -val
+	}
+	return val
+}
