@@ -3,12 +3,34 @@ package main
 import (
 	h "aoc2023/internal/helpers"
 	"fmt"
+	"log/slog"
 	"os"
 	"slices"
 	"strings"
 )
 
 func main() {
+
+	var programLevel = new(slog.LevelVar) // Info by default
+	handler := &slog.HandlerOptions{
+		Level: programLevel,
+		ReplaceAttr: func(groups []string, a slog.Attr) slog.Attr {
+			// Remove time from the output for predictable test output.
+			if a.Key == slog.TimeKey {
+				return slog.Attr{}
+			}
+			// Remove the level output
+			if a.Key == slog.LevelKey {
+				return slog.Attr{}
+			}
+
+			return a
+		},
+	}
+	logger := slog.New(slog.NewTextHandler(os.Stdout, handler))
+	slog.SetDefault(logger)
+	// programLevel.Set(slog.LevelInfo)
+	programLevel.Set(slog.LevelWarn)
 
 	d := &Day12{}
 
@@ -87,49 +109,56 @@ func FindSegments(values string) ([]int, byte) {
 }
 
 func FindValidConfigs(values string, targetSegments []int) int {
-	// halting condition for recursion
-	if !HasUnknowns(values) {
-		// fmt.Println("    Complete value", values)
-		segments, lastChar := FindSegments(values)
-		h.Assert(lastChar == 0, "should be complete")
-		if slices.Equal(segments, targetSegments) {
-			// fmt.Printf("   Valid config: %s, %v\n", values, targetSegments)
-			return 1
-		} else {
-			return 0
-		}
-	}
-
 	foundCount := 0
 	//main algo: find the first unknown and try all the values
 	unkInd := strings.Index(values, string(SPRING_UNKNOWN))
 	for _, tryValue := range TRY_VALUES {
 		newValues := values[:unkInd] + string(tryValue) + values[unkInd+1:]
-		//check our new value to see if it makes an invalid config
-		newSegments, lastChar := FindSegments(values)
+		//compute segments for our new value
+		newSegments, lastChar := FindSegments(newValues)
+		slog.Info("Testing",
+			"newValues", newValues,
+			"targetSegments", targetSegments,
+			"newSegments", newSegments)
+
+		//halting condition for recursion - all unknowns converted to values
+		if lastChar == 0 {
+			if slices.Equal(newSegments, targetSegments) {
+				slog.Warn("Found matching config", "value", newValues, "segments", newSegments)
+				foundCount += 1
+			} else {
+				slog.Info("NOT a matching config")
+			}
+			continue
+		}
+
+		//check our new value to see if anything lets us prune this branch of the search
+
 		//prune if too many segments
 		if len(newSegments) > len(targetSegments) {
-			// fmt.Printf("   Pruning search at %s %v\n", newValues, newSegments)
-			return 0
+			slog.Info("Pruning search too many seg")
+			continue
 		}
-		//if the last character was a bad spring, that last segment
+
+		//look at pruning cases by comparing segments
 		for index := 0; index < len(newSegments); index++ {
-			//special case for the last value
+			//special case for the last segment in the new value
+			//do something different based on the last character
 			if index == len(newSegments)-1 {
 				if lastChar == SPRING_GOOD {
 					//if it was good, the values must be equal or we prune
 					//because we can't make the existing groups bigger
 					if newSegments[index] != targetSegments[index] {
-						// fmt.Printf("   Pruning search at %s %v\n", newValues, newSegments)
-						return 0
+						slog.Info("Pruning search last seg neq with good")
+						continue
 					}
 				} else if lastChar == SPRING_BAD {
 					//if it was bad, we only prune if the value is greater than the target value
 					// because equal would be okan and less than might make a bigger group with
 					// more unknowns
 					if newSegments[index] > targetSegments[index] {
-						// fmt.Printf("   Pruning search at %s %v\n", newValues, newSegments)
-						return 0
+						slog.Info("Pruning search last seg greater with bad")
+						continue
 					}
 				} else if lastChar == SPRING_UNKNOWN {
 					//this happens if the first character is unknown, we just keep going
@@ -137,39 +166,41 @@ func FindValidConfigs(values string, targetSegments []int) int {
 					panic("unreachable")
 				}
 			} else {
-				//for any other value, the segments from our partial search must be equal or we prune
+				//for any segment other than the last, the segments from our partial search must be equal or we prune
 				if newSegments[index] != targetSegments[index] {
-					// fmt.Printf("   Pruning search at %s %v\n", newValues, newSegments)
-					return 0
+					slog.Info("Pruning search unequal seg", "segment", index)
+					continue
 				}
 			}
 		}
-		//target values
-		// fmt.Println("Not pruned", newValues)
-		//if we get here, the newValue is not pruned, so keep going
+		//if we get here, the newValue is not pruned or halted, so keep going with recursion
+		slog.Info("NOT pruning", "newValues", newValues)
 		newFindCount := FindValidConfigs(newValues, targetSegments)
 		foundCount += newFindCount
+	}
+	if foundCount > 0 {
+		slog.Info("Matching configs found so far", "found", foundCount, "values", values)
 	}
 	return foundCount
 }
 
-func (d *Day12) FindAll() {
+func (d *Day12) FindAll(findFunc func(string, []int) int) {
 	// fmt.Println(d.records)
 	totalFindCount := 0
 	for _, r := range d.records {
-		fmt.Println("Searching", r)
-		findCount := FindValidConfigs(r.Values, r.Segments)
+		// fmt.Println("Searching", r)
+		findCount := findFunc(r.Values, r.Segments)
 		totalFindCount += findCount
 		fmt.Printf("Found %d configs for %v\n", findCount, r)
+		fmt.Println("------------------------------------------------------------------")
 	}
-	fmt.Println("------------------")
 	fmt.Println("Total found:", totalFindCount)
 
 }
 
 func (d *Day12) Part1() {
 	fmt.Println("Part 1")
-	d.FindAll()
+	d.FindAll(FindValidConfigs)
 }
 
 func (r Record) Expand(multiplier int) Record {
@@ -200,5 +231,5 @@ func (d *Day12) Part2() {
 	d.records = records
 	// fmt.Println(d.records)
 
-	d.FindAll()
+	d.FindAll(FindValidConfigs)
 }
