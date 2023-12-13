@@ -3,14 +3,46 @@ package main
 import (
 	h "aoc2023/internal/helpers"
 	"fmt"
+	"log/slog"
 	"os"
 )
 
 func main() {
 
+	var programLevel = new(slog.LevelVar) // Info by default
+	handler := &slog.HandlerOptions{
+		Level: programLevel,
+		ReplaceAttr: func(groups []string, a slog.Attr) slog.Attr {
+			// Remove time from the output for predictable test output.
+			if a.Key == slog.TimeKey {
+				return slog.Attr{}
+			}
+			// Remove the level output
+			if a.Key == slog.LevelKey {
+				return slog.Attr{}
+			}
+
+			return a
+		},
+	}
+	logger := slog.New(slog.NewTextHandler(os.Stdout, handler))
+	slog.SetDefault(logger)
+	// programLevel.Set(slog.LevelInfo)
+	programLevel.Set(slog.LevelWarn)
+
+	var err error
+
+	// f, err := os.Create("dayXXX.prof")
+	// if err != nil {
+	// 	panic(err)
+	// }
+	// pprof.StartCPUProfile(f)
+	// defer pprof.StopCPUProfile()
+
+
 	d := &DayXXX{}
 
-	err := h.Dispatch(os.Args, d)
+	err = h.Dispatch(os.Args, d)
 	if err != nil {
 		fmt.Println("Error:", err)
 		os.Exit(1)
