@@ -351,6 +351,16 @@ func TestGridWalker(t *testing.T) {
 			grid.SetRC(r, c, r*c)
 		}
 	}
+	expectedC := []Coord{
+		{0, 0}, {0, 1}, {0, 2}, {0, 3},
+		{1, 0}, {1, 1}, {1, 2}, {1, 3},
+		{2, 0}, {2, 1}, {2, 2}, {2, 3},
+	}
+	expectedV := []int{
+		0, 0, 0, 0,
+		0, 1, 2, 3,
+		0, 2, 4, 6,
+	}
 
 	{
 		recording := []Coord{}
@@ -360,14 +370,17 @@ func TestGridWalker(t *testing.T) {
 		}
 
 		grid.WalkRC(walker)
+		assert.Equal(t, expectedC, recording)
+	}
+	{
+		recording := []Coord{}
 
-		expected := []Coord{
-			{0, 0}, {0, 1}, {0, 2}, {0, 3},
-			{1, 0}, {1, 1}, {1, 2}, {1, 3},
-			{2, 0}, {2, 1}, {2, 2}, {2, 3},
+		walker := func(coord Coord) {
+			recording = append(recording, coord)
 		}
 
-		assert.Equal(t, expected, recording)
+		grid.Walk(walker)
+		assert.Equal(t, expectedC, recording)
 	}
 	{
 		recordingC := []Coord{}
@@ -380,19 +393,116 @@ func TestGridWalker(t *testing.T) {
 
 		grid.WalkRCV(walker)
 
-		expectedC := []Coord{
-			{0, 0}, {0, 1}, {0, 2}, {0, 3},
-			{1, 0}, {1, 1}, {1, 2}, {1, 3},
-			{2, 0}, {2, 1}, {2, 2}, {2, 3},
+		assert.Equal(t, expectedC, recordingC)
+		assert.Equal(t, expectedV, recordingV)
+	}
+	{
+		recordingC := []Coord{}
+		recordingV := []int{}
+
+		walker := func(coord Coord, value int) {
+			recordingC = append(recordingC, coord)
+			recordingV = append(recordingV, value)
 		}
-		expectedV := []int{
-			0, 0, 0, 0,
-			0, 1, 2, 3,
-			0, 2, 4, 6,
-		}
+
+		grid.WalkV(walker)
 
 		assert.Equal(t, expectedC, recordingC)
 		assert.Equal(t, expectedV, recordingV)
+	}
+
+}
+
+func TestDirectionalGridWalker(t *testing.T) {
+
+	grid := CreateGrid[int](3, 4)
+
+	for r := 0; r < 3; r++ {
+		for c := 0; c < 4; c++ {
+			grid.SetRC(r, c, r*c)
+		}
+	}
+	directions := []Direction{NORTH, SOUTH, WEST, EAST}
+
+	//expected values are for each direction in directions
+	expectedC := [][]Coord{
+		{ //north
+			{0, 0}, {0, 1}, {0, 2}, {0, 3},
+			{1, 0}, {1, 1}, {1, 2}, {1, 3},
+			{2, 0}, {2, 1}, {2, 2}, {2, 3},
+		},
+		{ //south
+			{2, 0}, {2, 1}, {2, 2}, {2, 3},
+			{1, 0}, {1, 1}, {1, 2}, {1, 3},
+			{0, 0}, {0, 1}, {0, 2}, {0, 3},
+		},
+		{ //west
+			{0, 0}, {1, 0}, {2, 0},
+			{0, 1}, {1, 1}, {2, 1},
+			{0, 2}, {1, 2}, {2, 2},
+			{0, 3}, {1, 3}, {2, 3},
+		},
+		{ //east
+			{0, 3}, {1, 3}, {2, 3},
+			{0, 2}, {1, 2}, {2, 2},
+			{0, 1}, {1, 1}, {2, 1},
+			{0, 0}, {1, 0}, {2, 0},
+		},
+	}
+	expectedV := [][]int{
+		{ //north
+			0, 0, 0, 0,
+			0, 1, 2, 3,
+			0, 2, 4, 6,
+		},
+		{ //south
+			0, 2, 4, 6,
+			0, 1, 2, 3,
+			0, 0, 0, 0,
+		},
+		{ //west
+			0, 0, 0,
+			0, 1, 2,
+			0, 2, 4,
+			0, 3, 6,
+		},
+		{ //east
+			0, 3, 6,
+			0, 2, 4,
+			0, 1, 2,
+			0, 0, 0,
+		},
+	}
+
+	for testIndex, testDirection := range directions {
+		{
+			recordingC := []Coord{}
+			recordingV := []int{}
+
+			walker := func(row int, col int, value int) {
+				recordingC = append(recordingC, Coord{row, col})
+				recordingV = append(recordingV, value)
+			}
+
+			grid.WalkRCVFrom(walker, testDirection)
+
+			assert.Equal(t, expectedC[testIndex], recordingC)
+			assert.Equal(t, expectedV[testIndex], recordingV)
+		}
+		{
+			recordingC := []Coord{}
+			recordingV := []int{}
+
+			walker := func(coord Coord, value int) {
+				recordingC = append(recordingC, coord)
+				recordingV = append(recordingV, value)
+			}
+
+			grid.WalkVFrom(walker, testDirection)
+
+			assert.Equal(t, expectedC[testIndex], recordingC)
+			assert.Equal(t, expectedV[testIndex], recordingV)
+		}
 	}
 
 }
