@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"log/slog"
 	"os"
+	"time"
 )
 
 func main() {
@@ -184,6 +185,8 @@ func (d *Day14) Part2() {
 	cycleNumber := 0
 	var firstRepeatStart int
 
+	targetCycles := 1000000000
+
 	for {
 		d.SpinCycle()
 		cycleNumber += 1
@@ -200,7 +203,6 @@ func (d *Day14) Part2() {
 	}
 	fmt.Println("first repeat from", firstRepeatStart, "to", cycleNumber)
 
-	targetCycles := 1000000000
 	remainingCycles := (targetCycles - firstRepeatStart) % (cycleNumber - firstRepeatStart)
 	fmt.Println("Run remaining cycles", remainingCycles)
 
@@ -208,6 +210,28 @@ func (d *Day14) Part2() {
 		d.SpinCycle()
 		// cycleString := d.GridString()
 		// fmt.Println(cycleString)
+	}
+
+	fmt.Println("Total north weight", d.Weigh())
+}
+
+// just for grins, to see how long it would take
+func (d *Day14) Part2BF() {
+	fmt.Println("Part 2")
+
+	startTime := time.Now()
+	targetCycles := 1000000000
+
+	for i := 0; i < targetCycles; i++ {
+		d.SpinCycle()
+		// cycleString := d.GridString()
+		// fmt.Println(cycleString)
+		if i%1000 == 0 {
+			progress := (float64(i) / float64(targetCycles))
+			elapsed := time.Since(startTime)
+			remaining := (1.0 - (progress * 100)) * (elapsed.Seconds() / progress)
+			fmt.Printf("%f%% done after %f seconds, %f days remaining\n", progress*100.0, elapsed.Seconds(), remaining/3600.0/24.0)
+		}
 	}
 
 	fmt.Println("Total north weight", d.Weigh())
