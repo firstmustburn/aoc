@@ -419,3 +419,40 @@ func (g Grid[V]) WalkRCV(f func(int, int, V)) {
 		}
 	}
 }
+
+func (g Grid[V]) WalkRCVFrom(f func(int, int, V), dir Direction) {
+	walker := func(coord Coord, value V) {
+		f(coord.Row, coord.Col, value)
+	}
+	g.WalkVFrom(walker, dir)
+}
+
+func (g Grid[V]) WalkVFrom(f func(Coord, V), dir Direction) {
+	if dir == NORTH {
+		for row := 0; row < g.rows; row++ {
+			for col := 0; col < g.cols; col++ {
+				f(Coord{row, col}, g.data[row][col])
+			}
+		}
+	} else if dir == SOUTH {
+		for row := g.rows - 1; row >= 0; row-- {
+			for col := 0; col < g.cols; col++ {
+				f(Coord{row, col}, g.data[row][col])
+			}
+		}
+	} else if dir == WEST {
+		for col := 0; col < g.cols; col++ {
+			for row := 0; row < g.rows; row++ {
+				f(Coord{row, col}, g.data[row][col])
+			}
+		}
+	} else if dir == EAST {
+		for col := g.cols - 1; col >= 0; col-- {
+			for row := 0; row < g.rows; row++ {
+				f(Coord{row, col}, g.data[row][col])
+			}
+		}
+	} else {
+		panic("unhandled direction")
+	}
+}
