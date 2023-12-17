@@ -4,7 +4,6 @@ import (
 	h "aoc2023/internal/helpers"
 	"fmt"
 	"log/slog"
-	"math"
 	"os"
 )
 
@@ -61,9 +60,15 @@ func (d *Day17) DumpGridValue() {
 	fmt.Println("")
 }
 
+type GridNode struct {
+	coord      h.Coord
+	visitState VisitState
+}
+
 type Day17 struct {
 	lines     []string
 	grid      *h.Grid[GridData]
+	costPQ    *h.PriorityQueue[GridNode]
 	nullCoord h.Coord
 	isPart1   bool
 }
@@ -90,6 +95,7 @@ func (d *Day17) Setup(filename string) {
 	//the nullCoord is outside the grid
 	d.nullCoord = h.Coord{Row: rows * 2, Col: cols * 2}
 
+	d.costPQ = h.MakePriorityQueue[GridNode]()
 }
 
 type VisitState struct {
@@ -206,7 +212,11 @@ func (d *Day17) VisitNode(nodeCoord h.Coord, visitState VisitState) {
 	}
 	for nInd := range neighborCoords {
 		neighborNode := d.grid.GetPtr(neighborCoords[nInd])
-		neighborNode.UpdateCosts(nodeCost+node.HeatLoss, neighborVisitStates[nInd])
+		if neighborNode.UpdateCosts(nodeCost+node.HeatLoss, neighborVisitStates[nInd]) {
+			d.costPQ.Push(GridNode{neighborCoords[nInd], neighborVisitStates[nInd]}, h.PriorityValue(nodeCost+node.HeatLoss))
+			// fmt.Printf("  Set neighbor coord %v at %v cost to %d\n", neighborCoords[nInd], neighborVisitStates[nInd], nodeCost+node.HeatLoss)
+		}
+
 	}
 	//mark this node as visited
 	node.SetVisited(visitState)
@@ -223,28 +233,35 @@ func (d *Day17) FindMinPath() {
 	for _, startDir := range startDirs {
 		coord := startCoord.Dir(startDir)
 		visitState := VisitState{startDir, 1}
-		d.grid.GetPtr(coord).UpdateCosts(0, visitState)
+		if d.grid.GetPtr(coord).UpdateCosts(0, visitState) {
+			d.costPQ.Push(GridNode{coord, visitState}, h.PriorityValue(0))
+		}
 	}
 
 	visitCount := 0
 	for {
-		minCost := math.MaxInt
-		minCoord := d.nullCoord
-		minVisitState := VisitState{}
-		found := false
-		//find the smallest unvisited node and visit it
-		walker := func(coord h.Coord, data GridData) {
-			for visitState, visitCost := range data.Costs {
-				if visitCost < minCost && !data.IsVisited(visitState) {
-					minCost = visitCost
-					minCoord = coord
-					minVisitState = visitState
-					found = true
-				}
-			}
-		}
-		d.grid.WalkV(walker)
-		h.Assert(found, "no path to end node")
+		minGridNode, minCostP := d.costPQ.Pop()
+		minCost := int(minCostP)
+		minCoord := minGridNode.coord
+		minVisitState := minGridNode.visitState
+
+		// minCost := math.MaxInt
+		// minCoord := d.nullCoord
+		// minVisitState := VisitState{}
+		// found := false
+		// //find the smallest unvisited node and visit it
+		// walker := func(coord h.Coord, data GridData) {
+		// 	for visitState, visitCost := range data.Costs {
+		// 		if visitCost < minCost && !data.IsVisited(visitState) {
+		// 			minCost = visitCost
+		// 			minCoord = coord
+		// 			minVisitState = visitState
+		// 			found = true
+		// 		}
+		// 	}
+		// }
+		// d.grid.WalkV(walker)
+		// h.Assert(found, "no path to end node")
 
 		//check for end state
 		if d.isPart1 {
@@ -264,6 +281,7 @@ func (d *Day17) FindMinPath() {
 
 		}
 
+		// fmt.Printf("Visiting coord %v at %v with heat loss of %d and cost of %d\n", minCoord, minVisitState, d.grid.Get(minCoord).HeatLoss, minCost)
 		d.VisitNode(minCoord, minVisitState)
 		visitCount += 1
 		if visitCount%10000 == 0 {
