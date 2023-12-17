@@ -18,6 +18,28 @@ type Coord struct {
 	Col int
 }
 
+var leftTurn = map[Direction]Direction{
+	NORTH: WEST,
+	EAST:  NORTH,
+	SOUTH: EAST,
+	WEST:  SOUTH,
+}
+
+var rightTurn = map[Direction]Direction{
+	NORTH: EAST,
+	EAST:  SOUTH,
+	SOUTH: WEST,
+	WEST:  NORTH,
+}
+
+func (d Direction) Left() Direction {
+	return leftTurn[d]
+}
+
+func (d Direction) Right() Direction {
+	return rightTurn[d]
+}
+
 // Opposite returns the direction opposite of this direction
 func (d Direction) Opposite() Direction {
 	if d == NORTH {
@@ -321,6 +343,10 @@ func (g Grid[V]) AsRegion() Region {
 
 func (g Grid[V]) Get(c Coord) V {
 	return g.data[c.Row][c.Col]
+}
+
+func (g *Grid[V]) GetPtr(c Coord) *V {
+	return &g.data[c.Row][c.Col]
 }
 
 func (g Grid[V]) GetRow(row int) []V {

@@ -1,6 +1,11 @@
 package helpers
 
-import "golang.org/x/exp/constraints"
+import (
+	"fmt"
+	"strconv"
+
+	"golang.org/x/exp/constraints"
+)
 
 func Assert(condition bool, reason string) {
 	if !condition {
@@ -26,4 +31,10 @@ func AbsInt(val int) int {
 		return -val
 	}
 	return val
+}
+
+func StrToInt(val string) int {
+	output, err := strconv.Atoi(val)
+	Assert(err == nil, fmt.Sprintf("could not convert '%s' to int", val))
+	return output
 }
