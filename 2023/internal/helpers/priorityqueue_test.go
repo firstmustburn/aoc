@@ -34,7 +34,7 @@ func TestPQBasic(t *testing.T) {
 	}
 
 	//expected
-	expectedQD := []QD{QD{2}, QD{3}, QD{1}, QD{0}, QD{4}}
+	expectedQD := []QD{{2}, {3}, {1}, {0}, {4}}
 	expectedPriority := []PriorityValue{1, 3, 5, 10, 11}
 
 	assert.Equal(t, expectedQD, recordQD)
