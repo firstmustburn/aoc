@@ -6,7 +6,6 @@ import (
 	"log/slog"
 	"math"
 	"os"
-	"slices"
 	"strconv"
 	"strings"
 )
@@ -56,8 +55,6 @@ func main() {
 type Day18 struct {
 	lines        []string
 	instructions []Instruction
-	grid         *h.SparseGrid[GridCell]
-	path         []h.Coord
 }
 
 func (d *Day18) Setup(filename string) {
@@ -86,140 +83,6 @@ func (d *Day18) Setup(filename string) {
 			Color:     color})
 	}
 
-	d.grid = h.CreateSparseGrid[GridCell]()
-}
-
-type GridCell struct {
-	IsDug bool
-	Color string
-}
-
-func (d *Day18) DumpGrid() {
-	fmt.Println("----------------------------")
-	for row := d.grid.MinRow(); row <= d.grid.MaxRow(); row++ {
-		for col := d.grid.MinCol(); col <= d.grid.MaxCol(); col++ {
-			coord := h.Coord{Row: row, Col: col}
-			value := d.grid.Get(coord)
-			if value == nil {
-				fmt.Printf(".")
-			} else {
-				fmt.Printf("#")
-			}
-		}
-		fmt.Println()
-	}
-	fmt.Println("----------------------------")
-}
-
-func (d *Day18) Flood(startCoord h.Coord) {
-
-	toFlood := []h.Coord{startCoord}
-
-	for len(toFlood) > 0 {
-		//flood the first cell on the list
-		current := toFlood[0]
-		toFlood = toFlood[1:]
-
-		d.grid.Set(current, &GridCell{false, ""})
-
-		for _, adjacent := range current.Adjacent(false) {
-			if !d.grid.IsSet(adjacent) {
-				toFlood = append(toFlood, adjacent)
-			}
-		}
-	}
-}
-
-func (d *Day18) IsVertical(coord h.Coord) bool {
-	return d.grid.IsSet(coord.N()) && d.grid.IsSet(coord.S())
-}
-
-func (d *Day18) IsCrossing(coord h.Coord) (bool, h.Coord) {
-	//our ray cast is moving to the left, so the coord we start with is already the rightmost
-	h.Assert(!d.grid.IsSet(coord.E()), "start coord is not rightmost"+fmt.Sprintf("%v", coord)) //just make sure
-
-	leftmost := coord
-	for d.grid.IsSet(leftmost.W()) {
-		leftmost = leftmost.W()
-	}
-
-	//now see if the rightmost and leftmost have same or opposite sides set
-	leftUp := d.grid.IsSet(leftmost.N())
-	leftDown := d.grid.IsSet(leftmost.S())
-	rightUp := d.grid.IsSet(coord.N())
-	rightDown := d.grid.IsSet(coord.S())
-
-	isCrossing := (leftUp && rightDown) || (leftDown && rightUp)
-	return isCrossing, leftmost
-}
-
-func (d *Day18) CountEnclosed() int64 {
-	enclosedCount := int64(0)
-	for row := d.grid.MinRow(); row <= d.grid.MaxRow(); row++ {
-		//do columns from right to left
-		hitCount := 0
-		for col := d.grid.MaxCol(); col >= d.grid.MinCol(); col-- {
-			coord := h.Coord{Row: row, Col: col}
-			if d.grid.IsSet(coord) {
-				//this is an edge, so adjust the hit count accordingly
-				if d.IsVertical(coord) {
-					hitCount += 1
-				} else {
-					//else, horizontal
-					isCrossing, leftMostCoord := d.IsCrossing(coord)
-					if isCrossing {
-						hitCount += 1
-					}
-					//fast forward to the end of the edge
-					col = leftMostCoord.Col
-				}
-			} else {
-				//not an edge, so increment
-				if hitCount%2 == 1 {
-					//when hit count is odd, we are inside
-					enclosedCount += 1
-				}
-			}
-		}
-		fmt.Println("Row done", row)
-	}
-	return enclosedCount
-}
-
-func (d *Day18) IsEnclosed(coord h.Coord) bool {
-	//can't be enclosed if it's part of the loop
-	if d.grid.IsSet(coord) {
-		return false
-	}
-	//ray cast to the left
-	hitCount := 0
-
-	testCoord := coord.W()
-	for testCoord.Col >= d.grid.MinCol() {
-
-		if !slices.Contains(d.path, testCoord) {
-			//can't be a hit if it's not on the path
-			testCoord = testCoord.W()
-			continue
-		}
-
-		//vertical case
-		if d.IsVertical(testCoord) {
-			hitCount += 1
-			testCoord = testCoord.W()
-			continue
-		}
-
-		//horizontal case, so see if it is crossing or not
-		isCrossing, crossingLeftmost := d.IsCrossing(testCoord)
-		if isCrossing {
-			hitCount += 1
-		}
-		testCoord = crossingLeftmost.W()
-		continue
-	}
-	//if we have an odd number of hits, it is enclosed.
-	return (hitCount % 2) == 1
 }
 
 type Point struct {
@@ -302,29 +165,6 @@ func (d *Day18) Part1() {
 	enclosedArea := math.Abs((shoelace1 - shoelace2) / 2)
 
 	fmt.Println("Enclosed area is", strconv.FormatFloat(enclosedArea, 'f', 0, 64))
-
-	// currentCoord := h.Coord{Row: 0, Col: 0}
-	// d.grid.Set(currentCoord, &GridCell{true, ""})
-	// d.path = append(d.path, currentCoord)
-	// for _, instruction := range d.instructions {
-	// 	for i := 0; i < instruction.Distance; i++ {
-	// 		currentCoord = currentCoord.Dir(instruction.Direction)
-	// 		d.grid.Set(currentCoord, &GridCell{true, instruction.Color})
-	// 		d.path = append(d.path, currentCoord)
-	// 	}
-	// }
-
-	// d.DumpGrid()
-
-	// fmt.Println("Dug out", d.grid.Len())
-
-	// fmt.Println("Rows", d.grid.MinRow(), d.grid.MaxRow())
-	// fmt.Println("Cols", d.grid.MinCol(), d.grid.MaxCol())
-
-	// enclCount := d.CountEnclosed()
-	// fmt.Println("Enclosed ", enclCount)
-
-	// fmt.Println("Total Dug out", enclCount+int64(d.grid.Len()))
 
 }
 
