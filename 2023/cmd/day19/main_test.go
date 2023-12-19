@@ -12,36 +12,39 @@ func TestWorkflow(t *testing.T) {
 	inRange := MakePartRange()
 	results := workflow.ApplyToRange(inRange)
 	assert.Len(t, results, 3)
+	assert.Equal(t, "qs", results[0].outcome)
 	assert.Equal(t,
 		PartRange{
 			Properties: map[string]Range{
-				"x": {0, 4000},
-				"m": {0, 4000},
-				"a": {0, 4000},
+				"x": {1, 4000},
+				"m": {1, 4000},
+				"a": {1, 4000},
 				"s": {2771, 4000},
 			},
 		},
-		results["qs"])
+		results[0].partRange)
+	assert.Equal(t, "hdj", results[1].outcome)
 	assert.Equal(t,
 		PartRange{
 			Properties: map[string]Range{
-				"x": {0, 4000},
-				"m": {0, 1800},
-				"a": {0, 4000},
-				"s": {0, 2770},
+				"x": {1, 4000},
+				"m": {1, 1800},
+				"a": {1, 4000},
+				"s": {1, 2770},
 			},
 		},
-		results["hdj"])
+		results[1].partRange)
+	assert.Equal(t, "R", results[2].outcome)
 	assert.Equal(t,
 		PartRange{
 			Properties: map[string]Range{
-				"x": {0, 4000},
+				"x": {1, 4000},
 				"m": {1801, 4000},
-				"a": {0, 4000},
-				"s": {0, 2770},
+				"a": {1, 4000},
+				"s": {1, 2770},
 			},
 		},
-		results["R"])
+		results[2].partRange)
 }
 
 func TestRule(t *testing.T) {

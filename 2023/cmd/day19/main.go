@@ -134,19 +134,21 @@ func (d *Day19) Part2() {
 	acceptedPartRanges := []PartRange{}
 	rejectedPartRanges := []PartRange{}
 
-	var recurseWorkflows func(w Workflow, pr PartRange)
-	recurseWorkflows = func(w Workflow, pr PartRange) {
+	var recurseWorkflows func(w Workflow, pr PartRange, depth string)
+	recurseWorkflows = func(w Workflow, pr PartRange, depth string) {
 		results := w.ApplyToRange(pr)
-		for outcome, outcomeRange := range results {
-			if outcome == ACCEPT {
-				acceptedPartRanges = append(acceptedPartRanges, outcomeRange)
-			} else if outcome == REJECT {
-				rejectedPartRanges = append(rejectedPartRanges, outcomeRange)
+		fmt.Printf("%sApplying %s to %s with results:\n", depth, w.originalValue, pr.String())
+		for _, result := range results {
+			fmt.Printf("%s %s->%s\n", depth, result.partRange.String(), result.outcome)
+			if result.outcome == ACCEPT {
+				acceptedPartRanges = append(acceptedPartRanges, result.partRange)
+			} else if result.outcome == REJECT {
+				rejectedPartRanges = append(rejectedPartRanges, result.partRange)
 			} else {
-				nextWorkflow, ok := d.workflows[outcome]
-				h.Assert(ok, "no workflow found for "+outcome)
+				nextWorkflow, ok := d.workflows[result.outcome]
+				h.Assert(ok, "no workflow found for "+result.outcome)
 
-				recurseWorkflows(nextWorkflow, outcomeRange)
+				recurseWorkflows(nextWorkflow, result.partRange, depth+"  ")
 			}
 		}
 	}
@@ -154,7 +156,7 @@ func (d *Day19) Part2() {
 	startRange := MakePartRange()
 	startWorkflow := d.workflows["in"]
 
-	recurseWorkflows(startWorkflow, startRange)
+	recurseWorkflows(startWorkflow, startRange, "")
 
 	outcomes := 0
 	for _, pr := range acceptedPartRanges {
@@ -172,8 +174,9 @@ const ACCEPT = "A"
 const REJECT = "R"
 
 type Workflow struct {
-	Name  string
-	Rules []Rule
+	Name          string
+	Rules         []Rule
+	originalValue string
 }
 
 func (w Workflow) Apply(p Part) string {
@@ -186,11 +189,16 @@ func (w Workflow) Apply(p Part) string {
 	panic("unreachable")
 }
 
+type WorkflowResult struct {
+	outcome   string
+	partRange PartRange
+}
+
 // ApplyToRange returns a map of the rule, ACCEPT, or REJECT to the applicable part subrange
-func (w Workflow) ApplyToRange(pr PartRange) map[string]PartRange {
+func (w Workflow) ApplyToRange(pr PartRange) []WorkflowResult {
 
 	remainder := pr.Clone()
-	results := map[string]PartRange{}
+	results := make([]WorkflowResult, 0, len(w.Rules))
 
 	for _, rule := range w.Rules {
 		var rangeToOutcome *PartRange
@@ -198,7 +206,7 @@ func (w Workflow) ApplyToRange(pr PartRange) map[string]PartRange {
 
 		rangeToOutcome, outcome, remainder = rule.ApplyToRange(*remainder)
 		if rangeToOutcome != nil {
-			results[outcome] = *rangeToOutcome
+			results = append(results, WorkflowResult{outcome, *rangeToOutcome})
 		}
 		if remainder == nil {
 			break
@@ -221,8 +229,9 @@ func MakeWorkflow(input string) Workflow {
 		rules = append(rules, MakeRule(ruleToken))
 	}
 	return Workflow{
-		Name:  match[1],
-		Rules: rules,
+		Name:          match[1],
+		Rules:         rules,
+		originalValue: input,
 	}
 }
 
@@ -340,6 +349,14 @@ type PartRange struct {
 	Properties map[string]Range
 }
 
+func (pr PartRange) String() string {
+	output := "{"
+	for k, v := range pr.Properties {
+		output += fmt.Sprintf("%s[%d->%d] ", k, v.Minval, v.Maxval)
+	}
+	return output + "}"
+}
+
 func (pr PartRange) Clone() *PartRange {
 	return &PartRange{maps.Clone(pr.Properties)}
 }
@@ -362,10 +379,10 @@ func (pr PartRange) Split(property string, splitAfter int) (*PartRange, *PartRan
 func MakePartRange() PartRange {
 	return PartRange{
 		Properties: map[string]Range{
-			"x": {0, 4000},
-			"m": {0, 4000},
-			"a": {0, 4000},
-			"s": {0, 4000},
+			"x": {1, 4000},
+			"m": {1, 4000},
+			"a": {1, 4000},
+			"s": {1, 4000},
 		},
 	}
 }
