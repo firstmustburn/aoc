@@ -38,3 +38,12 @@ func StrToInt(val string) int {
 	Assert(err == nil, fmt.Sprintf("could not convert '%s' to int", val))
 	return output
 }
+
+func All(values []bool) bool {
+	for _, value := range values {
+		if !value {
+			return false
+		}
+	}
+	return true
+}
