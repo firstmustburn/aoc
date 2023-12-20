@@ -1,0 +1,169 @@
+digraph day20 {
+mv [ label = "FLIPFLOP mv" ]
+mv -> bc;
+mv -> pp;
+hh [ label = "FLIPFLOP hh" ]
+hh -> ql;
+hh -> vb;
+ql [ label = "CONJUNCTION ql" ]
+ql -> ln;
+ql -> jr;
+ql -> xs;
+ql -> mg;
+ql -> vm;
+ld [ label = "FLIPFLOP ld" ]
+ld -> nv;
+jl [ label = "FLIPFLOP jl" ]
+jl -> js;
+jl -> hq;
+rg [ label = "FLIPFLOP rg" ]
+rg -> hq;
+rg -> zq;
+rd [ label = "FLIPFLOP rd" ]
+rd -> hl;
+rd -> zz;
+zz [ label = "FLIPFLOP zz" ]
+zz -> hl;
+zz -> kc;
+xt [ label = "FLIPFLOP xt" ]
+xt -> ss;
+mg [ label = "FLIPFLOP mg" ]
+mg -> lt;
+vb [ label = "FLIPFLOP vb" ]
+vb -> ql;
+kl [ label = "FLIPFLOP kl" ]
+kl -> hl;
+xn [ label = "FLIPFLOP xn" ]
+xn -> mv;
+xn -> bc;
+mc [ label = "FLIPFLOP mc" ]
+mc -> xt;
+rt [ label = "FLIPFLOP rt" ]
+rt -> kk;
+rt -> hl;
+pm [ label = "FLIPFLOP pm" ]
+pm -> tt;
+fv [ label = "CONJUNCTION fv" ]
+fv -> zg;
+hq [ label = "CONJUNCTION hq" ]
+hq -> xt;
+hq -> sp;
+hq -> gl;
+hq -> jd;
+hq -> jl;
+hq -> ss;
+hq -> mc;
+kk [ label = "FLIPFLOP kk" ]
+kk -> ld;
+cp [ label = "FLIPFLOP cp" ]
+cp -> ql;
+cp -> ln;
+gl [ label = "FLIPFLOP gl" ]
+gl -> mc;
+ck [ label = "FLIPFLOP ck" ]
+ck -> hl;
+ck -> ct;
+ct [ label = "FLIPFLOP ct" ]
+ct -> rd;
+broadcaster [ label = "BROADCAST broadcaster" ]
+broadcaster -> rt;
+broadcaster -> jr;
+broadcaster -> rp;
+broadcaster -> jl;
+hl [ label = "CONJUNCTION hl" ]
+hl -> kh;
+hl -> rt;
+hl -> ct;
+hl -> kk;
+hl -> lm;
+hl -> ld;
+lt [ label = "FLIPFLOP lt" ]
+lt -> ql;
+lt -> cp;
+jd [ label = "CONJUNCTION jd" ]
+jd -> zg;
+ln [ label = "FLIPFLOP ln" ]
+ln -> rr;
+xs [ label = "FLIPFLOP xs" ]
+xs -> mg;
+xg [ label = "FLIPFLOP xg" ]
+xg -> xm;
+xm [ label = "FLIPFLOP xm" ]
+xm -> bc;
+xm -> xn;
+js [ label = "FLIPFLOP js" ]
+js -> gl;
+js -> hq;
+vm [ label = "CONJUNCTION vm" ]
+vm -> zg;
+kc [ label = "FLIPFLOP kc" ]
+kc -> kl;
+kc -> hl;
+jr [ label = "FLIPFLOP jr" ]
+jr -> xs;
+jr -> ql;
+qj [ label = "FLIPFLOP qj" ]
+qj -> hq;
+tt [ label = "FLIPFLOP tt" ]
+tt -> xg;
+tt -> bc;
+dp [ label = "FLIPFLOP dp" ]
+dp -> hh;
+dp -> ql;
+fh [ label = "FLIPFLOP fh" ]
+fh -> bc;
+fh -> jn;
+fx [ label = "FLIPFLOP fx" ]
+fx -> kh;
+fx -> hl;
+nv [ label = "FLIPFLOP nv" ]
+nv -> fx;
+nv -> hl;
+lm [ label = "CONJUNCTION lm" ]
+lm -> zg;
+sp [ label = "FLIPFLOP sp" ]
+sp -> gh;
+zg [ label = "CONJUNCTION zg" ]
+zg -> rx;
+rr [ label = "FLIPFLOP rr" ]
+rr -> rl;
+rr -> ql;
+bc [ label = "CONJUNCTION bc" ]
+bc -> rn;
+bc -> pm;
+bc -> rp;
+bc -> xg;
+bc -> fv;
+bc -> tn;
+rn [ label = "FLIPFLOP rn" ]
+rn -> pm;
+pp [ label = "FLIPFLOP pp" ]
+pp -> bc;
+jn [ label = "FLIPFLOP jn" ]
+jn -> bc;
+jn -> tn;
+kh [ label = "FLIPFLOP kh" ]
+kh -> ck;
+rp [ label = "FLIPFLOP rp" ]
+rp -> fh;
+rp -> bc;
+tn [ label = "FLIPFLOP tn" ]
+tn -> rn;
+mz [ label = "FLIPFLOP mz" ]
+mz -> hq;
+mz -> sp;
+vh [ label = "FLIPFLOP vh" ]
+vh -> ql;
+vh -> dp;
+rl [ label = "FLIPFLOP rl" ]
+rl -> ql;
+rl -> vh;
+ss [ label = "FLIPFLOP ss" ]
+ss -> mz;
+zq [ label = "FLIPFLOP zq" ]
+zq -> hq;
+zq -> qj;
+gh [ label = "FLIPFLOP gh" ]
+gh -> rg;
+gh -> hq;
+}
