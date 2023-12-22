@@ -311,6 +311,23 @@ func (r Region) IntersectsRegion(other Region) bool {
 		r.upperLeft.Row < other.lowerRight.Row && r.lowerRight.Row > other.upperLeft.Row
 }
 
+func (r Region) Expand(c Coord) Region {
+	if r.ContainsCoord(c) {
+		return r
+	}
+	//need to expand the region to contain the new coord
+	return Region{
+		upperLeft: Coord{
+			Row: min(c.Row, r.upperLeft.Row),
+			Col: min(c.Col, r.upperLeft.Col),
+		},
+		lowerRight: Coord{
+			Row: max(c.Row, r.lowerRight.Row),
+			Col: max(c.Col, r.lowerRight.Col),
+		},
+	}
+}
+
 type Grid[V any] struct {
 	data [][]V
 	rows int
@@ -399,6 +416,22 @@ func (g Grid[V]) AdjacentToRegion(r Region, includeDiagonals bool) []Coord {
 	return adj
 }
 
+// GetTiled returns the location as though there were an infinite repeating grid
+func (g Grid[V]) GetTiled(c Coord) V {
+	return g.data[Mod(c.Row, g.rows)][Mod(c.Col, g.cols)]
+}
+
+// return a region representing a tile of the infinite grid.
+// E.g. 0,0 is the original grid.  0,1 is the same sized region in the East (+ columns)
+// Direction.
+func (g Grid[V]) GetTileRegion(regionRow int, regionCol int) Region {
+
+	return Region{
+		Coord{0 + (regionRow * g.rows), 0 + (regionCol * g.cols)},
+		Coord{g.rows + (regionRow * g.rows) - 1, g.cols + (regionCol * g.cols) - 1},
+	}
+}
+
 func (g *Grid[V]) Set(c Coord, newValue V) {
 	g.data[c.Row][c.Col] = newValue
 }
@@ -428,6 +461,18 @@ func (g Grid[V]) WalkV(f func(Coord, V)) {
 			f(Coord{row, col}, g.data[row][col])
 		}
 	}
+}
+
+func (g Grid[V]) WalkVUntil(f func(Coord, V) bool) bool {
+	for row := 0; row < g.rows; row++ {
+		for col := 0; col < g.cols; col++ {
+			res := f(Coord{row, col}, g.data[row][col])
+			if !res {
+				return false
+			}
+		}
+	}
+	return true
 }
 
 func (g Grid[V]) WalkRC(f func(int, int)) {

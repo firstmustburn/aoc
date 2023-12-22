@@ -47,3 +47,12 @@ func All(values []bool) bool {
 	}
 	return true
 }
+
+// mod returns the modulus and works for negative numbers
+func Mod(d, m int) int {
+	var res int = d % m
+	if res < 0 && m > 0 {
+		return res + m
+	}
+	return res
+}
